@@ -1,2 +1,4 @@
-vendor
-.bundle
+/vendor/
+/.bundle/
+/*.sqlite3
+*.sqlite3

@@ -1,3 +1,5 @@
+## File: Rakefile
+
 require 'sqlite3'
 require_relative './db/connection'
 
@@ -5,12 +7,11 @@ namespace :db do
   desc "Setup the database: create, load schema, and seed"
   task :setup do
     puts "Creating database file..."
-    # The connection file itself will create the DB if it doesn't exist
     DB
     
     puts "Loading schema..."
-    Rake::Task['db:schema:load'].invoke
-    
+    Rake::Task['db:schema'].invoke
+
     puts "Seeding data..."
     Rake::Task['db:seed'].invoke
     
