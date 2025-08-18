@@ -1,11 +1,15 @@
+# -----------------------------------------------------------------------------
+# File: config.ru (Updated)
+# -----------------------------------------------------------------------------
 require 'rack/cors'
+require_relative './db/connection' # Require the DB connection
 
-# ... (keep existing requires)
+# Require all controllers
 require_relative './app/controllers/quests_controller'
 require_relative './app/controllers/feedback_controller'
 require_relative './app/controllers/leaderboard_controller'
+require_relative './app/controllers/dashboard_controller'
 
-# ... (keep CORS block unchanged)
 use Rack::Cors do
   allow do
     origins 'http://localhost:3000'
@@ -14,17 +18,8 @@ use Rack::Cors do
 end
 
 run Rack::Builder.new {
-  # ... (keep existing maps)
-  map '/quests' do
-    run QuestsController
-  end
-  
-  # Add this block for the new feedback route
-  map '/feedback' do
-    run FeedbackController
-  end
-
-  map '/leaderboard' do
-    run LeaderboardController
-  end
+  map('/quests') { run QuestsController }
+  map('/feedback') { run FeedbackController }
+  map('/leaderboard') { run LeaderboardController }
+  map('/dashboard') { run DashboardController }
 }

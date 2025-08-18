@@ -36,6 +36,7 @@ The content is organized as follows:
 # Directory Structure
 ```
 .gitignore
+app/controllers/dashboard_controller.rb
 app/controllers/feedback_controller.rb
 app/controllers/leaderboard_controller.rb
 app/controllers/quests_controller.rb
@@ -45,6 +46,70 @@ Gemfile
 ```
 
 # Files
+
+## File: app/controllers/dashboard_controller.rb
+```ruby
+require 'sinatra/base'
+require 'sinatra/json'
+
+class DashboardController < Sinatra::Base
+  # --- All the mock data needed for the dashboard page ---
+
+  MOCK_AGENDA_ITEMS = [
+    { id: 1, type: 'article', title: 'The Art of Giving Constructive Feedback', category: 'Communication' },
+    { id: 2, type: 'meeting', title: 'Q3 Project Kickoff', date: '2025-08-16' },
+    { id: 3, type: 'article', title: 'Leading Without Authority', category: 'Leadership' },
+  ]
+
+  MOCK_ACTIVITY_STREAM = [
+    { id: 1, user: 'Casey Jordan', action: 'completed the quest "Teamwork Titan".', time: '5m ago' },
+    { id: 2, user: 'Alex Rivera', action: 'provided feedback on the "Q3 Marketing Plan".', time: '2h ago' },
+    { id: 3, user: 'Taylor Morgan', action: 'updated the status of task "Deploy Staging Server".', time: '1d ago' },
+    { id: 4, user: 'Jamie Lee', action: 'read the article "Leading Without Authority".', time: '1d ago' },
+    { id: 5, user: 'Jordan Smith', action: 'RSVP\'d to "Q3 Project Kickoff".', time: '2d ago' },
+  ]
+
+  MOCK_MEETINGS = [
+    { id: 1, title: 'Q3 Project Kickoff', date: '2025-08-16', status: 'Upcoming' },
+    { id: 2, title: 'Weekly Sync: Sprint 14', date: '2025-08-12', status: 'Complete' },
+    { id: 3, title: 'Design Review: New Feature', date: '2025-08-11', status: 'Complete' },
+  ]
+
+  MOCK_TEAM_ENGAGEMENT_DATA = [
+    { category: 'Quests', value: 75, fullMark: 100 },
+    { category: 'Feedback', value: 85, fullMark: 100 },
+    { category: 'Meetings', value: 90, fullMark: 100 },
+    { category: 'Knowledge', value: 60, fullMark: 100 },
+    { category: 'Skills', value: 70, fullMark: 100 },
+  ]
+
+  MOCK_PERSONAL_ENGAGEMENT_DATA = [
+    { category: 'Quests', value: 95, fullMark: 100 },
+    { category: 'Feedback', value: 60, fullMark: 100 },
+    { category: 'Meetings', value: 100, fullMark: 100 },
+    { category: 'Knowledge', value: 80, fullMark: 100 },
+    { category: 'Skills', value: 45, fullMark: 100 },
+  ]
+
+  # GET /dashboard
+  # Returns a single JSON object with all data for the dashboard.
+  get '/' do
+    json({
+      agendaItems: MOCK_AGENDA_ITEMS,
+      activityStream: MOCK_ACTIVITY_STREAM,
+      meetings: MOCK_MEETINGS,
+      teamEngagement: MOCK_TEAM_ENGAGEMENT_DATA,
+      personalEngagement: MOCK_PERSONAL_ENGAGEMENT_DATA
+    })
+  end
+end
+```
+
+## File: .gitignore
+```
+vendor
+.bundle
+```
 
 ## File: app/controllers/feedback_controller.rb
 ```ruby
@@ -187,12 +252,6 @@ class MainApp < Sinatra::Base
 end
 ```
 
-## File: .gitignore
-```
-vendor
-.bundle
-```
-
 ## File: config.ru
 ```
 require 'rack/cors'
@@ -201,6 +260,7 @@ require 'rack/cors'
 require_relative './app/controllers/quests_controller'
 require_relative './app/controllers/feedback_controller'
 require_relative './app/controllers/leaderboard_controller'
+require_relative './app/controllers/dashboard_controller'
 
 # ... (keep CORS block unchanged)
 use Rack::Cors do
@@ -219,6 +279,10 @@ run Rack::Builder.new {
   # Add this block for the new feedback route
   map '/feedback' do
     run FeedbackController
+  end
+
+  map '/dashboard' do
+    run DashboardController
   end
 
   map '/leaderboard' do
