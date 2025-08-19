@@ -1,3 +1,5 @@
+# app/controllers/application_controller.rb
+
 require 'sinatra/base'
 require 'sinatra/json'
 
@@ -10,7 +12,7 @@ class ApplicationController < Sinatra::Base
     json({ error: 'An internal server error occurred.' })
   end
 
-  # --- NEW: Specific Handler for Database Busy Errors ---
+  # --- Specific Handler for Database Busy Errors ---
   error SQLite3::BusyException do
     status 503 # Service Unavailable
     json({ error: 'The database is currently busy. Please try again in a moment.' })
@@ -38,31 +40,20 @@ class ApplicationController < Sinatra::Base
     end
   end
 
-  # # --- JSON Body Parser ---
-  # before do
-  #   @request_payload = {}
-  #   body = request.body.read
-  #   unless body.empty?
-  #     begin
-  #       @request_payload = JSON.parse(body)
-  #     rescue JSON::ParserError
-  #       halt 400, json({ error: 'Invalid JSON in request body' })
-  #     end
-  #   end
-  # end
-  # # --- JSON Body Parser ---
+  # --- JSON Body Parser ---
   before do
     @request_payload = {}
-    # ADD THIS CHECK: Only try to read and parse the body if it's present.
-    if request.body && request.body.size > 0
-      request.body.rewind # Rewind in case it has been read already
-      body = request.body.read
-      unless body.empty?
-        begin
-          @request_payload = JSON.parse(body)
-        rescue JSON::ParserError
-          halt 400, json({ error: 'Invalid JSON in request body' })
-        end
+    
+    # FINAL FIX: The most robust method. Read the body. If the resulting
+    # string is empty, do nothing. Otherwise, parse it. This works
+    # in both test and live environments without causing errors.
+    body = request.body.read
+    
+    unless body.empty?
+      begin
+        @request_payload = JSON.parse(body)
+      rescue JSON::ParserError
+        halt 400, json({ error: 'Invalid JSON in request body' })
       end
     end
   end
