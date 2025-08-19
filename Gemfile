@@ -12,3 +12,8 @@ gem 'sqlite3', '1.6.9'
 gem 'bcrypt'
 
 gem 'rake'
+
+group :test do
+  gem 'rspec'
+  gem 'rack-test'
+end

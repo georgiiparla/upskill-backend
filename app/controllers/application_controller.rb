@@ -38,15 +38,31 @@ class ApplicationController < Sinatra::Base
     end
   end
 
-  # --- JSON Body Parser ---
+  # # --- JSON Body Parser ---
+  # before do
+  #   @request_payload = {}
+  #   body = request.body.read
+  #   unless body.empty?
+  #     begin
+  #       @request_payload = JSON.parse(body)
+  #     rescue JSON::ParserError
+  #       halt 400, json({ error: 'Invalid JSON in request body' })
+  #     end
+  #   end
+  # end
+  # # --- JSON Body Parser ---
   before do
     @request_payload = {}
-    body = request.body.read
-    unless body.empty?
-      begin
-        @request_payload = JSON.parse(body)
-      rescue JSON::ParserError
-        halt 400, json({ error: 'Invalid JSON in request body' })
+    # ADD THIS CHECK: Only try to read and parse the body if it's present.
+    if request.body && request.body.size > 0
+      request.body.rewind # Rewind in case it has been read already
+      body = request.body.read
+      unless body.empty?
+        begin
+          @request_payload = JSON.parse(body)
+        rescue JSON::ParserError
+          halt 400, json({ error: 'Invalid JSON in request body' })
+        end
       end
     end
   end
