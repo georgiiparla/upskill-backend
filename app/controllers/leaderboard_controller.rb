@@ -1,9 +1,11 @@
-## File: app/controllers/leaderboard_controller.rb
-
-require 'sinatra/base'
 require 'sinatra/json'
+require_relative './application_controller'
 
-class LeaderboardController < Sinatra::Base
+class LeaderboardController < ApplicationController
+  before do
+    protected!
+  end
+  
   get '/' do
     result = DB.execute("SELECT * FROM leaderboard ORDER BY points DESC")
     leaderboard = result.map do |row|

@@ -1,7 +1,11 @@
-require 'sinatra/base'
 require 'sinatra/json'
+require_relative './application_controller'
 
-class DashboardController < Sinatra::Base
+class DashboardController < ApplicationController
+  before do
+    protected! # This line protects all routes in this controller
+  end
+
   # Engagement data is complex to calculate, so we'll keep it as mock data.
   # In a real app, this would be the result of an analytics query.
   MOCK_TEAM_ENGAGEMENT_DATA = [

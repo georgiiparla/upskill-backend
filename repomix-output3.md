@@ -1,9 +1,9 @@
-This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
 
 # File Summary
 
 ## Purpose
-This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+This file contains a packed representation of the entire repository's contents.
 It is designed to be easily consumable by AI systems for analysis, code review,
 or other automated processes.
 
@@ -28,7 +28,6 @@ The content is organized as follows:
 ## Notes
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Files matching these patterns are excluded: vendor
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -36,33 +35,153 @@ The content is organized as follows:
 # Directory Structure
 ```
 .gitignore
+app/controllers/application_controller.rb
+app/controllers/auth_controller.rb
 app/controllers/dashboard_controller.rb
 app/controllers/feedback_controller.rb
 app/controllers/leaderboard_controller.rb
 app/controllers/quests_controller.rb
-app/controllers/session_draft.rb
 config.ru
 db/connection.rb
 db/schema.sql
-db/seed.sql
+db/seeds.sql
 Gemfile
 Rakefile
 ```
 
 # Files
 
-## File: .gitignore
-```
-vendor
-.bundle
-```
-
-## File: app/controllers/dashboard_controller.rb
+## File: app/controllers/application_controller.rb
 ```ruby
 require 'sinatra/base'
 require 'sinatra/json'
 
-class DashboardController < Sinatra::Base
+class ApplicationController < Sinatra::Base
+  helpers do
+    # Finds the currently logged-in user based on the session
+    def current_user
+      return @current_user if @current_user
+      return nil unless session[:user_id]
+      @current_user = DB.get_first_row("SELECT id, username, email FROM users WHERE id = ?", session[:user_id])
+    end
+
+    # Checks if a user is logged in
+    def logged_in?
+      !current_user.nil?
+    end
+
+    # Halts the request if the user is not logged in
+    def protected!
+      halt 401, json({ error: 'Unauthorized' }) unless logged_in?
+    end
+  end
+
+  # Helper to parse JSON request bodies
+  before do
+    # This allows controllers to access request data via @request_payload
+    if request.body.size > 0
+        request.body.rewind
+        begin
+            @request_payload = JSON.parse(request.body.read)
+        rescue JSON::ParserError
+            # Handle cases where body is not valid JSON
+            @request_payload = {}
+        end
+    else
+        @request_payload = {}
+    end
+  end
+end
+```
+
+## File: app/controllers/auth_controller.rb
+```ruby
+require 'sinatra/json'
+require 'bcrypt'
+require_relative './application_controller'
+
+class AuthController < ApplicationController
+  # SIGN UP a new user
+  # POST /auth/signup
+  post '/signup' do
+    username = @request_payload['username']
+    email = @request_payload['email']
+    password = @request_payload['password']
+
+    if username.nil? || email.nil? || password.nil?
+      halt 400, json({ error: 'Username, email, and password are required' })
+    end
+
+    # Check if a user with that email already exists
+    existing_user = DB.get_first_row("SELECT * FROM users WHERE email = ?", email)
+    if existing_user
+      halt 409, json({ error: 'User with this email already exists' })
+    end
+
+    # Hash the password for secure storage
+    password_digest = BCrypt::Password.create(password)
+
+    DB.execute(
+      "INSERT INTO users (username, email, password_digest) VALUES (?, ?, ?)",
+      username,
+      email,
+      password_digest
+    )
+
+    status 201
+    json({ message: 'User created successfully' })
+  end
+
+  # LOGIN an existing user
+  # POST /auth/login
+  post '/login' do
+    email = @request_payload['email']
+    password = @request_payload['password']
+
+    if email.nil? || password.nil?
+      halt 400, json({ error: 'Email and password are required' })
+    end
+
+    user = DB.get_first_row("SELECT * FROM users WHERE email = ?", email)
+
+    # Verify user exists and password is correct
+    if user && BCrypt::Password.new(user['password_digest']) == password
+      session[:user_id] = user['id'] # Create the session
+      json({ message: 'Logged in successfully', user: { id: user['id'], username: user['username'], email: user['email'] } })
+    else
+      halt 401, json({ error: 'Invalid email or password' })
+    end
+  end
+
+  # LOGOUT the current user
+  # POST /auth/logout
+  post '/logout' do
+    session.clear
+    json({ message: 'Logged out successfully' })
+  end
+
+  # Check the current user's session status
+  # GET /auth/profile
+  get '/profile' do
+    if logged_in?
+      json({ logged_in: true, user: current_user })
+    else
+      json({ logged_in: false })
+    end
+  end
+end
+```
+
+## File: app/controllers/dashboard_controller.rb
+```ruby
+require 'sinatra/json'
+require_relative './application_controller'
+
+class DashboardController < ApplicationController
+  before do
+    protected! # This line protects all routes in this controller
+  end
+
   # Engagement data is complex to calculate, so we'll keep it as mock data.
   # In a real app, this would be the result of an analytics query.
   MOCK_TEAM_ENGAGEMENT_DATA = [
@@ -98,42 +217,6 @@ class DashboardController < Sinatra::Base
 end
 ```
 
-## File: app/controllers/session_draft.rb
-```ruby
-require 'sinatra/base'
-
-class MainApp < Sinatra::Base
-  enable :sessions
-  set :session_secret, '9a78e4f5a3e8c9a3b2b1d0e8c7f9a2b5e4f3a2b1d0c9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1'
-
-  get '/' do
-    'Hello world! This is the main application.'
-  end
-  
-  get '/about' do
-    'This is the about page.'
-  end
-
-  get '/remember' do
-    session[:message] = "I'm remembering this!"
-    'Saved a message to your session.'
-  end
-
-  get '/recall' do
-    if session[:message]
-      "The message from your session is: #{session[:message]}"
-    else
-      "There is no message in your session."
-    end
-  end
-  
-  get '/forget' do
-    session.clear
-    'Session cleared.'
-  end
-end
-```
-
 ## File: db/connection.rb
 ```ruby
 # -----------------------------------------------------------------------------
@@ -151,12 +234,21 @@ DB.results_as_hash = true
 ## File: db/schema.sql
 ```sql
 -- Drop tables if they exist to ensure a clean slate
+DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS quests;
 DROP TABLE IF EXISTS feedback_history;
 DROP TABLE IF EXISTS leaderboard;
 DROP TABLE IF EXISTS agenda_items;
 DROP TABLE IF EXISTS activity_stream;
 DROP TABLE IF EXISTS meetings;
+
+-- Create the users table for authentication
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    password_digest TEXT NOT NULL
+);
 
 -- Create the quests table
 CREATE TABLE quests (
@@ -171,10 +263,12 @@ CREATE TABLE quests (
 -- Create the feedback_history table
 CREATE TABLE feedback_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER, -- Link to the user who submitted it
     subject TEXT,
     content TEXT,
     created_at TEXT, -- Storing date as text in YYYY-MM-DD format
-    sentiment TEXT
+    sentiment TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Create the leaderboard table
@@ -211,7 +305,7 @@ CREATE TABLE meetings (
 );
 ```
 
-## File: db/seed.sql
+## File: db/seeds.sql
 ```sql
 -- Seed data for the quests table
 INSERT INTO quests (title, description, points, progress, completed) VALUES
@@ -249,8 +343,63 @@ INSERT INTO meetings (title, meeting_date, status) VALUES
 ('Design Review: New Feature', '2025-08-11', 'Complete');
 ```
 
+## File: .gitignore
+```
+/vendor/
+/.bundle/
+/*.sqlite3
+*.sqlite3
+```
+
+## File: app/controllers/feedback_controller.rb
+```ruby
+require 'sinatra/json'
+require_relative './application_controller'
+
+class FeedbackController < ApplicationController
+  before do
+    protected!
+  end
+  
+  get '/' do
+    page = params.fetch('page', 1).to_i
+    limit = params.fetch('limit', 5).to_i
+    offset = (page - 1) * limit
+    total_count = DB.get_first_value("SELECT COUNT(*) FROM feedback_history")
+    query = "SELECT * FROM feedback_history ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    items_for_page = DB.execute(query, limit, offset)
+    has_more = total_count > (offset + items_for_page.length)
+    json({ items: items_for_page, hasMore: has_more })
+  end
+end
+```
+
+## File: app/controllers/quests_controller.rb
+```ruby
+require 'sinatra/json'
+require_relative './application_controller'
+
+class QuestsController < ApplicationController
+  before do
+    protected!
+  end
+  
+  get '/' do
+    result = DB.execute("SELECT * FROM quests ORDER BY id ASC")
+    quests = result.map do |row|
+      # Convert integer (0 or 1) to boolean for the frontend
+      row['completed'] = row['completed'] == 1
+      row
+    end
+    json quests
+  end
+end
+```
+
 ## File: Rakefile
 ```
+## File: Rakefile
+
 require 'sqlite3'
 require_relative './db/connection'
 
@@ -258,12 +407,11 @@ namespace :db do
   desc "Setup the database: create, load schema, and seed"
   task :setup do
     puts "Creating database file..."
-    # The connection file itself will create the DB if it doesn't exist
     DB
     
     puts "Loading schema..."
-    Rake::Task['db:schema:load'].invoke
-    
+    Rake::Task['db:schema'].invoke
+
     puts "Seeding data..."
     Rake::Task['db:seed'].invoke
     
@@ -286,28 +434,16 @@ namespace :db do
 end
 ```
 
-## File: app/controllers/feedback_controller.rb
-```ruby
-require 'sinatra/base'
-require 'sinatra/json'
-
-class FeedbackController < Sinatra::Base
-  get '/' do
-    page = params.fetch('page', 1).to_i
-    limit = params.fetch('limit', 5).to_i
-    offset = (page - 1) * limit
-    total_count = DB.get_first_value("SELECT COUNT(*) FROM feedback_history")
-    query = "SELECT * FROM feedback_history ORDER BY created_at DESC LIMIT ? OFFSET ?"
-    items_for_page = DB.execute(query, limit, offset)
-    has_more = total_count > (offset + items_for_page.length)
-    json({ items: items_for_page, hasMore: has_more })
-  end
-end
-```
-
 ## File: app/controllers/leaderboard_controller.rb
 ```ruby
-class LeaderboardController < Sinatra::Base
+require 'sinatra/json'
+require_relative './application_controller'
+
+class LeaderboardController < ApplicationController
+  before do
+    protected!
+  end
+  
   get '/' do
     result = DB.execute("SELECT * FROM leaderboard ORDER BY points DESC")
     leaderboard = result.map do |row|
@@ -319,32 +455,14 @@ class LeaderboardController < Sinatra::Base
 end
 ```
 
-## File: app/controllers/quests_controller.rb
-```ruby
-require 'sinatra/base'
-require 'sinatra/json'
-
-class QuestsController < Sinatra::Base
-  get '/' do
-    result = DB.execute("SELECT * FROM quests ORDER BY id ASC")
-    quests = result.map do |row|
-      row['completed'] = row['completed'] == 1
-      row
-    end
-    json quests
-  end
-end
-```
-
 ## File: config.ru
 ```
-# -----------------------------------------------------------------------------
-# File: config.ru (Updated)
-# -----------------------------------------------------------------------------
 require 'rack/cors'
-require_relative './db/connection' # Require the DB connection
+require_relative './db/connection'
 
 # Require all controllers
+require_relative './app/controllers/application_controller'
+require_relative './app/controllers/auth_controller'
 require_relative './app/controllers/quests_controller'
 require_relative './app/controllers/feedback_controller'
 require_relative './app/controllers/leaderboard_controller'
@@ -352,12 +470,27 @@ require_relative './app/controllers/dashboard_controller'
 
 use Rack::Cors do
   allow do
-    origins 'http://localhost:3000'
-    resource '*', headers: :any, methods: [:get, :post, :options]
+    # This is configured to allow requests from your frontend and Postman.
+    # The `credentials: true` part is crucial for session cookies to work.
+    origins 'http://localhost:3000' 
+    resource '*',
+      headers: :any,
+      methods: [:get, :post, :put, :patch, :delete, :options, :head],
+      credentials: true
   end
 end
 
+# Enable and configure cookie-based sessions for all controllers
+use Rack::Session::Cookie, {
+  key: 'rack.session',
+  path: '/',
+  expire_after: 2592000, # 30 days in seconds
+  # This secret should be kept private in a real application
+  secret: '9a78e4f5a3e8c9a3b2b1d0e8c7f9a2b5e4f3a2b1d0c9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1'
+}
+
 run Rack::Builder.new {
+  map('/auth') { run AuthController }
   map('/quests') { run QuestsController }
   map('/feedback') { run FeedbackController }
   map('/leaderboard') { run LeaderboardController }
@@ -378,6 +511,7 @@ gem 'rack-cors'
 gem 'sinatra-contrib'
 
 gem 'sqlite3', '1.6.9'
+gem 'bcrypt'
 
 gem 'rake'
 ```

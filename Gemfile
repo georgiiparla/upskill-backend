@@ -9,5 +9,6 @@ gem 'rack-cors'
 gem 'sinatra-contrib'
 
 gem 'sqlite3', '1.6.9'
+gem 'bcrypt'
 
 gem 'rake'

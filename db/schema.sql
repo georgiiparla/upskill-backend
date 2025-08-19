@@ -1,10 +1,19 @@
 -- Drop tables if they exist to ensure a clean slate
+DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS quests;
 DROP TABLE IF EXISTS feedback_history;
 DROP TABLE IF EXISTS leaderboard;
 DROP TABLE IF EXISTS agenda_items;
 DROP TABLE IF EXISTS activity_stream;
 DROP TABLE IF EXISTS meetings;
+
+-- Create the users table for authentication
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    password_digest TEXT NOT NULL
+);
 
 -- Create the quests table
 CREATE TABLE quests (
@@ -19,10 +28,12 @@ CREATE TABLE quests (
 -- Create the feedback_history table
 CREATE TABLE feedback_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER, -- Link to the user who submitted it
     subject TEXT,
     content TEXT,
     created_at TEXT, -- Storing date as text in YYYY-MM-DD format
-    sentiment TEXT
+    sentiment TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Create the leaderboard table
