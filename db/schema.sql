@@ -39,11 +39,11 @@ CREATE TABLE feedback_history (
 -- Create the leaderboard table
 CREATE TABLE leaderboard (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
+    user_id INTEGER,
     points INTEGER,
-    badges TEXT -- Storing badges as a comma-separated string
+    badges TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
-
 -- Create agenda_items table for the dashboard
 CREATE TABLE agenda_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,9 +56,10 @@ CREATE TABLE agenda_items (
 -- Create activity_stream table for the dashboard
 CREATE TABLE activity_stream (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_name TEXT,
+    user_id INTEGER,
     action TEXT,
-    created_at TEXT
+    created_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Create meetings table for the dashboard

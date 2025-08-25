@@ -9,7 +9,19 @@ class DashboardController < ApplicationController
   get '/' do
     # Standard data fetches
     agenda_items = DB.execute("SELECT * FROM agenda_items ORDER BY due_date ASC")
-    activity_stream = DB.execute("SELECT * FROM activity_stream ORDER BY id DESC LIMIT 5")
+
+    activity_sql = <<-SQL
+      SELECT 
+        a.id,
+        u.username AS user_name, 
+        a.action, 
+        a.created_at 
+      FROM activity_stream a
+      JOIN users u ON a.user_id = u.id
+      ORDER BY a.id DESC LIMIT 5
+    SQL
+    activity_stream = DB.execute(activity_sql)
+
     meetings = DB.execute("SELECT * FROM meetings ORDER BY meeting_date DESC")
 
     # A single, structured mock object for all activity stats

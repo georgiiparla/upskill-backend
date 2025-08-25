@@ -25,9 +25,10 @@ end
 use Rack::Session::Cookie, {
   key: 'rack.session',
   path: '/',
-  expire_after: 2592000, # 30 days in seconds
-  # This secret should be kept private in a real application
-  secret: '9a78e4f5a3e8c9a3b2b1d0e8c7f9a2b5e4f3a2b1d0c9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1'
+  expire_after: 2592000,
+  secret: ENV['SESSION_SECRET'] || '2b2f2e9de188a71851c52961ad8aef439867e2115429a230c86b618e5d0f135c491914cf1ad21a416407ddc9a0a469e038f91b69fd2c7cf9620261725076689f',
+  same_site: :lax,
+  secure: false
 }
 
 run Rack::Builder.new {
