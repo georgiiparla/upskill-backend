@@ -11,19 +11,15 @@ require 'json'
 require 'bcrypt'
 require 'fileutils'
 
-# --- RSpec Configuration ---
+# RSpec Config
 RSpec.configure do |config|
   # Include Rack::Test methods (like get, post, last_response) in all spec files
   config.include Rack::Test::Methods
 
-  # --- Define the app method for Rack::Test ---
-  # This tells our tests to make requests against the application defined in config.ru
   def app
-    # FIX: parse_file returns the fully configured Rack app, not an array.
     Rack::Builder.parse_file('config.ru')
   end
 
-  # --- Database Setup and Teardown ---
   # This block runs once before the entire test suite starts.
   config.before(:suite) do
     puts "Setting up the test database..."
@@ -56,7 +52,7 @@ RSpec.configure do |config|
     puts "Test database setup complete."
   end
 
-  # --- Clean up after the suite ---
+  # clean up
   config.after(:suite) do
     puts "\nCleaning up test database..."
     DB.close if DB
@@ -69,7 +65,7 @@ RSpec.configure do |config|
     clear_cookies
   end
 
-  # --- RSpec Expectation and Mocking Configuration ---
+  # RSpec Expectation and Mocking Configuration
   config.expect_with :rspec do |expectations|
     expectations.include_chain_clauses_in_custom_matcher_descriptions = true
   end

@@ -1,13 +1,10 @@
-# spec/controllers/auth_controller_spec.rb
-
 require_relative '../spec_helper'
 
 RSpec.describe "Authentication API", type: :request do
   let(:valid_signup_params) { { username: 'New User', email: 'new@example.com', password: 'password123' } }
   let(:valid_login_params) { { email: 'test@example.com', password: 'password123' } }
 
-  # FIX: This block runs before each test in this file to ensure a clean state
-  # for the user being created or deleted.
+  # FThis block runs before each test in this file to ensure a clean state for the user being created or deleted.
   before(:each) do
     DB.execute("DELETE FROM users WHERE email = ?", 'new@example.com')
   end
@@ -79,7 +76,7 @@ RSpec.describe "Authentication API", type: :request do
       post '/auth/logout'
       expect(last_response.status).to eq(200)
       
-      # FIX: Instead of checking the cookie, verify the *effect* of logging out.
+      # verify the *effect* of logging out.
       # A subsequent request to a protected endpoint should fail.
       get '/auth/profile'
       json_response = JSON.parse(last_response.body)

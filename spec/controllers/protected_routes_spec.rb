@@ -1,4 +1,3 @@
-# spec/controllers/protected_routes_spec.rb
 # This file tests all controllers that have the `protected!` before filter.
 
 require_relative '../spec_helper'

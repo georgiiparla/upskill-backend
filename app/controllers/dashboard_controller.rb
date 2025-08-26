@@ -30,7 +30,7 @@ class DashboardController < ApplicationController
         quests:   { allTime: 5, thisWeek: 1 },
         feedback: { allTime: 8, thisWeek: 3 },
         points:   { allTime: 1250, thisWeek: 75 },
-        streak:   14 # MODIFIED: Simplified to a single, logical value
+        streak:   14
       },
       team: {
         quests:   { allTime: 256, thisWeek: 12 },
@@ -38,7 +38,6 @@ class DashboardController < ApplicationController
       }
     }
 
-    # --- Final JSON Response ---
     json({
       agendaItems: agenda_items,
       activityStream: activity_stream,

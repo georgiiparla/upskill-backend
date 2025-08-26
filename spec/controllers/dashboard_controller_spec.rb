@@ -1,5 +1,3 @@
-# spec/controllers/dashboard_controller_spec.rb
-
 require_relative '../spec_helper'
 
 RSpec.describe "Dashboard API", type: :request do

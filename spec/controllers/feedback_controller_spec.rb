@@ -1,5 +1,3 @@
-# spec/controllers/feedback_controller_spec.rb
-
 require_relative '../spec_helper'
 
 RSpec.describe "Feedback API", type: :request do
