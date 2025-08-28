@@ -9,6 +9,7 @@ class LeaderboardController < ApplicationController
   get '/' do
     sql = <<-SQL
       SELECT 
+        u.id,
         u.username AS name, 
         l.points, 
         l.badges 
