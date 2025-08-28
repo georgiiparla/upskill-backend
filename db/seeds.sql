@@ -44,9 +44,11 @@ INSERT INTO agenda_items (type, title, category, due_date) VALUES
 ('article', 'Leading Without Authority', 'Leadership', '2025-08-20');
 
 INSERT INTO activity_stream (user_id, action, created_at) VALUES
-(2, 'completed the quest "Teamwork Titan".', '5m ago'),
-(1, 'provided feedback on the "Q3 Marketing Plan".', '2h ago'),
-(3, 'updated the status of task "Deploy Staging Server".', '1d ago');
+(5, 'completed the quest "Onboarding Champion".', '45m ago'),
+(1, 'opened a feedback request for the "Q4 Product Launch" document.', '15m ago'),
+(3, 'edited the "Engineering Team Weekly Agenda".', '3h ago'),
+(2, 'published a new article titled "Mastering Asynchronous Communication".', '8h ago'),
+(4, 'edited the "Linux Development Roadmap".', '2d ago');
 
 INSERT INTO meetings (title, meeting_date, status) VALUES
 ('Q3 Project Kickoff', '2025-08-19', 'Upcoming'),

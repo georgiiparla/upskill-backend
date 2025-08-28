@@ -28,7 +28,7 @@ CREATE TABLE quests (
 -- Create the feedback_history table
 CREATE TABLE feedback_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER, -- Link to the user who submitted it
+    user_id INTEGER,
     subject TEXT,
     content TEXT,
     created_at TEXT, -- Storing date as text in YYYY-MM-DD format
