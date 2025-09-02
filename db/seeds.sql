@@ -9,7 +9,7 @@ DELETE FROM meetings;
 -- Reset the auto-increment counters for SQLite
 DELETE FROM sqlite_sequence;
 
--- If you try to log in using the following emails, you get the error since any inserted value will be converted to hash and it will be compared with placeholder_digest which is invalid hash by itself
+-- If try to log in using the following emails, you get the error since any inserted value will be converted to hash and it will be compared with placeholder_digest which is invalid hash by itself
 
 INSERT INTO users (id, username, email, password_digest) VALUES
 (1, 'Alex Rivera', 'alex@example.com', 'placeholder_digest'),
