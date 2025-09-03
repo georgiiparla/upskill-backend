@@ -1,0 +1,481 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: vendor
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  controllers/
+    application_controller.rb
+    auth_controller.rb
+    dashboard_controller.rb
+    feedback_controller.rb
+    leaderboard_controller.rb
+    quests_controller.rb
+  models/
+    activity_stream.rb
+    agenda_item.rb
+    feedback_history.rb
+    leaderboard.rb
+    meetings.rb
+    quest.rb
+    user.rb
+config/
+  database.yml
+db/
+  schema.rb
+  seeds.rb
+.gitignore
+config.ru
+Gemfile
+Rakefile
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/models/activity_stream.rb">
+class ActivityStream < ActiveRecord::Base
+  belongs_to :user
+end
+</file>
+
+<file path="app/models/agenda_item.rb">
+class AgendaItem < ActiveRecord::Base
+  self.inheritance_column = :_type_disabled 
+end
+</file>
+
+<file path="app/models/feedback_history.rb">
+class FeedbackHistory < ActiveRecord::Base
+  belongs_to :user
+end
+</file>
+
+<file path="app/models/leaderboard.rb">
+class Leaderboard < ActiveRecord::Base
+  belongs_to :user
+end
+</file>
+
+<file path="app/models/meetings.rb">
+class Meeting < ActiveRecord::Base; end
+</file>
+
+<file path="app/models/quest.rb">
+class Quest < ActiveRecord::Base; end
+</file>
+
+<file path="app/models/user.rb">
+require 'bcrypt'
+
+class User < ActiveRecord::Base
+  has_secure_password # Handles password hashing via bcrypt
+  
+  has_many :feedback_histories, dependent: :destroy
+  has_many :activity_streams, dependent: :destroy
+  has_one :leaderboard, dependent: :destroy
+end
+</file>
+
+<file path="config/database.yml">
+development:
+  adapter: sqlite3
+  database: db/development.sqlite3
+
+test:
+  adapter: sqlite3
+  database: db/test.sqlite3
+
+production:
+  adapter: postgresql
+  url: <%= ENV['DATABASE_URL'] %>
+</file>
+
+<file path="db/schema.rb">
+ActiveRecord::Schema[7.0].define(version: 2025_09_03_200000) do
+  create_table "activity_streams", force: :cascade do |t|
+    t.integer "user_id"
+    t.text "action"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_activity_streams_on_user_id"
+  end
+
+  create_table "agenda_items", force: :cascade do |t|
+    t.string "type"
+    t.string "title"
+    t.string "category"
+    t.date "due_date"
+  end
+
+  create_table "feedback_histories", force: :cascade do |t|
+    t.integer "user_id"
+    t.string "subject"
+    t.text "content"
+    t.string "sentiment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_feedback_histories_on_user_id"
+  end
+
+  create_table "leaderboards", force: :cascade do |t|
+    t.integer "user_id"
+    t.integer "points"
+    t.text "badges"
+    t.index ["user_id"], name: "index_leaderboards_on_user_id"
+  end
+
+  create_table "meetings", force: :cascade do |t|
+    t.string "title"
+    t.date "meeting_date"
+    t.string "status"
+  end
+
+  create_table "quests", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description"
+    t.integer "points"
+    t.integer "progress"
+    t.boolean "completed", default: false
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.string "username", null: false
+    t.string "email", null: false
+    t.string "password_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["username"], name: "index_users_on_username", unique: true
+  end
+
+  add_foreign_key "activity_streams", "users"
+  add_foreign_key "feedback_histories", "users"
+  add_foreign_key "leaderboards", "users"
+end
+</file>
+
+<file path="db/seeds.rb">
+puts "Seeding database..."
+
+ActiveRecord::Base.transaction do
+  puts "   - Deleting old data..."
+  [User, Quest, FeedbackHistory, Leaderboard, AgendaItem, ActivityStream, Meeting].each(&:destroy_all)
+
+  puts "   - Creating users..."
+  users = {}
+  users[:alex]   = User.create!(username: 'Alex Rivera',      email: 'alex@example.com',    password: 'password123')
+  users[:casey]  = User.create!(username: 'Casey Jordan',     email: 'casey@example.com',   password: 'password123')
+  users[:taylor] = User.create!(username: 'Taylor Morgan',    email: 'taylor@example.com',  password: 'password123')
+  users[:jordan] = User.create!(username: 'Jordan Smith',     email: 'jordan@example.com',  password: 'password123')
+  users[:jamie]  = User.create!(username: 'Jamie Lee',        email: 'jamie@example.com',   password: 'password123')
+  users[:morgan] = User.create!(username: 'Morgan Quinn',     email: 'morgan@example.com',  password: 'password123')
+
+  puts "   - Creating quests..."
+  Quest.create!([
+    { title: 'Adaptability Ace', description: 'Complete the "Handling Change" module and score 90% on the quiz.', points: 150, progress: 100, completed: true },
+    { title: 'Communication Pro', description: 'Provide constructive feedback on 5 different project documents.', points: 200, progress: 60, completed: false },
+    { title: 'Leadership Leap', description: 'Lead a project planning session and submit the meeting notes.', points: 250, progress: 0, completed: false },
+    { title: 'Teamwork Titan', description: 'Successfully complete a paired programming challenge.', points: 100, progress: 100, completed: true }
+  ])
+
+  puts "   - Creating feedback history..."
+  users[:alex].feedback_histories.create!(subject: 'Q3 Marketing Plan', content: 'The plan is well-structured, but the timeline seems aggressive.', created_at: '2025-08-15T09:00:00Z', sentiment: 'Neutral')
+  users[:casey].feedback_histories.create!(subject: 'New Feature Design', content: 'I love the new UI! It\'s much more intuitive.', created_at: '2025-08-14T11:30:00Z', sentiment: 'Positive')
+  users[:taylor].feedback_histories.create!(subject: 'API Documentation', content: 'The endpoint for user auth is missing examples.', created_at: '2025-08-12T16:45:00Z', sentiment: 'Negative')
+  users[:jordan].feedback_histories.create!(subject: 'Onboarding Process', content: 'The new hire checklist is helpful, but some links are broken.', created_at: '2025-08-11T14:00:00Z', sentiment: 'Negative')
+
+  puts "   - Creating leaderboard..."
+  Leaderboard.create!([
+    { user: users[:alex],   points: 4250, badges: '🚀,🎯,🔥' },
+    { user: users[:casey],  points: 3980, badges: '💡,🎯' },
+    { user: users[:taylor], points: 3710, badges: '🤝' },
+    { user: users[:jordan], points: 3500, badges: '🚀' },
+    { user: users[:jamie],  points: 3200, badges: '💡,🤝' },
+    { user: users[:morgan], points: 2950, badges: '🎯' }
+  ])
+
+  puts "   - Creating dashboard items..."
+  AgendaItem.create!([
+    { type: 'article', title: 'The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18' },
+    { type: 'meeting', title: 'Q3 Project Kickoff', category: 'Planning', due_date: '2025-08-19' },
+    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20' }
+  ])
+  
+  ActivityStream.create!([
+    { user: users[:casey], action: 'completed the quest "Teamwork Titan".', created_at: Time.now - 5.minutes },
+    { user: users[:alex], action: 'provided feedback on the "Q3 Marketing Plan".', created_at: Time.now - 2.hours },
+    { user: users[:taylor], action: 'updated the status of task "Deploy Staging Server".', created_at: Time.now - 1.day },
+    { user: users[:jamie], action: 'read the article "Leading Without Authority".', created_at: Time.now - 1.day },
+    { user: users[:jordan], action: 'RSVP\'d to "Q3 Project Kickoff".', created_at: Time.now - 2.days }
+  ])
+
+  Meeting.create!([
+    { title: 'Q3 Project Kickoff', meeting_date: '2025-08-19', status: 'Upcoming' },
+    { title: 'Weekly Sync: Sprint 14', meeting_date: '2025-08-12', status: 'Complete' },
+    { title: 'Design Review: New Feature', meeting_date: '2025-08-11', status: 'Complete' }
+  ])
+end
+
+puts "Seeding complete."
+</file>
+
+<file path="app/controllers/auth_controller.rb">
+class AuthController < ApplicationController
+  post '/signup' do
+    user = User.new(
+      username: @request_payload['username'],
+      email: @request_payload['email'],
+      password: @request_payload['password']
+    )
+    if user.save
+      status 201
+      json({ message: 'User created successfully' })
+    else
+      halt 409, json({ error: 'User with this email already exists' })
+    end
+  end
+
+  post '/login' do
+    user = User.find_by(email: @request_payload['email'])
+    if user&.authenticate(@request_payload['password'])
+      session[:user_id] = user.id
+      json({ message: 'Logged in successfully', user: { id: user.id, username: user.username, email: user.email } })
+    else
+      halt 401, json({ error: 'Invalid email or password' })
+    end
+  end
+
+  post '/logout' do
+    session.clear
+    json({ message: 'Logged out successfully' })
+  end
+
+  get '/profile' do
+    if current_user
+      json({ logged_in: true, user: current_user.slice(:id, :username, :email) })
+    else
+      json({ logged_in: false })
+    end
+  end
+end
+</file>
+
+<file path=".gitignore">
+/vendor/
+/.bundle/
+/*.sqlite3
+*.sqlite3
+</file>
+
+<file path="Rakefile">
+# Rakefile
+require 'sinatra'
+require 'sinatra/activerecord'
+require 'sinatra/activerecord/rake'
+
+# Load application models for rake tasks
+Dir["./app/models/*.rb"].each { |file| require file }
+</file>
+
+<file path="app/controllers/feedback_controller.rb">
+class FeedbackController < ApplicationController
+  get '/' do
+    protected!
+    page = params.fetch('page', 1).to_i
+    limit = params.fetch('limit', 5).to_i
+    
+    feedbacks = current_user.feedback_histories.order(created_at: :desc).limit(limit).offset((page - 1) * limit)
+    total_count = current_user.feedback_histories.count
+    has_more = total_count > (page * limit)
+    
+    json({ items: feedbacks, hasMore: has_more })
+  end
+end
+</file>
+
+<file path="app/controllers/quests_controller.rb">
+class QuestsController < ApplicationController
+  get '/' do
+    protected!
+    json Quest.order(id: :asc)
+  end
+end
+</file>
+
+<file path="app/controllers/application_controller.rb">
+# app/controllers/application_controller.rb
+require 'sinatra/base'
+require 'sinatra/json'
+require 'sinatra/activerecord'
+require 'bcrypt'
+
+# Load all models
+Dir["./app/models/*.rb"].each { |file| require file }
+
+class ApplicationController < Sinatra::Base
+  set :database_file, '../../config/database.yml'
+  
+  helpers do
+    def current_user
+      @current_user ||= User.find_by(id: session[:user_id])
+    end
+    def protected!
+      halt 401, json({ error: 'Unauthorized' }) unless current_user
+    end
+  end
+
+  # JSON Body Parser
+  before do
+    @request_payload = {}
+    body = request.body.read
+    if !body.empty? && request.content_type&.include?("application/json")
+      begin
+        @request_payload = JSON.parse(body)
+      rescue JSON::ParserError
+        halt 400, json({ error: 'Invalid JSON in request body' })
+      end
+    end
+  end
+end
+</file>
+
+<file path="app/controllers/dashboard_controller.rb">
+class DashboardController < ApplicationController
+  get '/' do
+    protected!
+    agenda_items = AgendaItem.order(due_date: :asc)
+    # Eager load the associated user to prevent N+1 queries
+    activity_stream = ActivityStream.includes(:user).order(created_at: :desc).limit(5)
+    meetings = Meeting.order(meeting_date: :desc)
+    
+    activity_json = activity_stream.map do |activity|
+      { id: activity.id, user_name: activity.user.username, action: activity.action, created_at: activity.created_at }
+    end
+    
+    mock_activity_data = {
+      personal: { quests: { allTime: 5, thisWeek: 1 }, feedback: { allTime: 8, thisWeek: 3 } },
+      team: { quests: { allTime: 256, thisWeek: 12 }, feedback: { allTime: 891, thisWeek: 34 } }
+    }
+
+    json({ agendaItems: agenda_items, activityStream: activity_json, meetings: meetings, activityData: mock_activity_data })
+  end
+end
+</file>
+
+<file path="config.ru">
+require 'rack/cors'
+require_relative './app/controllers/application_controller'
+
+# Load all individual controllers
+Dir["./app/controllers/*.rb"].each { |file| require file }
+
+# --- Middleware Setup ---
+# This is the correct place to configure middleware for the whole app.
+
+# CORS Middleware for frontend communication
+use Rack::Cors do
+  allow do
+    origins ENV['FRONTEND_URL'] || 'http://localhost:3000'
+    resource '*',
+      headers: :any,
+      methods: [:get, :post, :put, :patch, :delete, :options, :head],
+      credentials: true
+  end
+end
+
+# Session Middleware with production-safe settings
+use Rack::Session::Cookie, {
+  key: 'rack.session',
+  path: '/',
+  expire_after: 2592000,
+  secret: ENV['SESSION_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393',
+  same_site: ENV['RACK_ENV'] == 'production' ? :none : :lax,
+  secure: ENV['RACK_ENV'] == 'production'
+}
+
+# --- Route Mapping ---
+# This block tells the server which controller to use for each URL prefix.
+run Rack::Builder.new {
+  map('/auth') { run AuthController }
+  map('/dashboard') { run DashboardController }
+  map('/feedback') { run FeedbackController }
+  map('/quests') { run QuestsController }
+  map('/leaderboard') { run LeaderboardController }
+}
+</file>
+
+<file path="app/controllers/leaderboard_controller.rb">
+class LeaderboardController < ApplicationController
+  get '/' do
+    protected!
+    leaderboard_data = Leaderboard.includes(:user).order(points: :desc).map do |entry|
+      { id: entry.user.id, name: entry.user.username, points: entry.points, badges: entry.badges ? entry.badges.split(',') : [] }
+    end
+    json leaderboard_data
+  end
+end
+</file>
+
+<file path="Gemfile">
+source 'https://rubygems.org'
+
+ruby '3.2.3'
+
+gem 'sinatra'
+gem 'sinatra-activerecord'
+gem 'rake'
+gem 'activerecord', '~> 7.0'
+gem 'puma'
+gem 'rackup'
+gem 'rack-cors'
+gem 'sinatra-contrib'
+gem 'bcrypt'
+gem 'pg'
+
+group :development, :test do
+  gem 'sqlite3', '1.6.9'
+  gem 'rspec'
+  gem 'rack-test'
+end
+</file>
+
+</files>

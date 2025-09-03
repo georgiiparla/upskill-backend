@@ -3,12 +3,20 @@ require 'sinatra/base'
 require 'sinatra/json'
 require 'sinatra/activerecord'
 require 'bcrypt'
+require 'logger'
 
 # Load all models
 Dir["./app/models/*.rb"].each { |file| require file }
 
 class ApplicationController < Sinatra::Base
   set :database_file, '../../config/database.yml'
+
+  configure do
+    logger = Logger.new(STDOUT)
+    logger.level = Logger::DEBUG
+    set :logger, logger
+    use Rack::CommonLogger, logger
+  end
   
   helpers do
     def current_user

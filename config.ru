@@ -4,9 +4,6 @@ require_relative './app/controllers/application_controller'
 # Load all individual controllers
 Dir["./app/controllers/*.rb"].each { |file| require file }
 
-# --- Middleware Setup ---
-# This is the correct place to configure middleware for the whole app.
-
 # CORS Middleware for frontend communication
 use Rack::Cors do
   allow do
@@ -24,8 +21,8 @@ use Rack::Session::Cookie, {
   path: '/',
   expire_after: 2592000,
   secret: ENV['SESSION_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393',
-  same_site: ENV['RACK_ENV'] == 'production' ? :none : :lax,
-  secure: ENV['RACK_ENV'] == 'production'
+  same_site: :none,
+  secure: true
 }
 
 # --- Route Mapping ---

@@ -115,5 +115,8 @@ DEPENDENCIES
   sinatra-contrib
   sqlite3 (= 1.6.9)
 
+RUBY VERSION
+   ruby 3.2.3p157
+
 BUNDLED WITH
    2.6.7
