@@ -1,17 +1,19 @@
 source 'https://rubygems.org'
 
 gem "sinatra"
+gem 'sinatra-activerecord'
+gem 'rake'
+gem 'activerecord', '~> 7.0'
+
 gem 'puma'
 gem 'rackup'
-gem 'rerun'
 
 gem 'rack-cors'
 gem 'sinatra-contrib'
-
-gem 'sqlite3', '1.6.9'
 gem 'bcrypt'
 
-gem 'rake'
+gem 'pg'
+gem 'sqlite3', '1.6.9'
 
 group :test do
   gem 'rspec'

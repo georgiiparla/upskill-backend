@@ -1,19 +1,16 @@
 require 'rack/cors'
-require_relative './db/connection'
-
-# Require all controllers
 require_relative './app/controllers/application_controller'
-require_relative './app/controllers/auth_controller'
-require_relative './app/controllers/quests_controller'
-require_relative './app/controllers/feedback_controller'
-require_relative './app/controllers/leaderboard_controller'
-require_relative './app/controllers/dashboard_controller'
 
+# Load all individual controllers
+Dir["./app/controllers/*.rb"].each { |file| require file }
+
+# --- Middleware Setup ---
+# This is the correct place to configure middleware for the whole app.
+
+# CORS Middleware for frontend communication
 use Rack::Cors do
   allow do
-    # This is configured to allow requests from your frontend and Postman.
-    # The `credentials: true` part is crucial for session cookies to work.
-    origins 'http://localhost:3000' 
+    origins ENV['FRONTEND_URL'] || 'http://localhost:3000'
     resource '*',
       headers: :any,
       methods: [:get, :post, :put, :patch, :delete, :options, :head],
@@ -21,20 +18,22 @@ use Rack::Cors do
   end
 end
 
-# Enable and configure cookie-based sessions for all controllers
+# Session Middleware with production-safe settings
 use Rack::Session::Cookie, {
   key: 'rack.session',
   path: '/',
   expire_after: 2592000,
-  secret: ENV['SESSION_SECRET'] || '2b2f2e9de188a71851c52961ad8aef439867e2115429a230c86b618e5d0f135c491914cf1ad21a416407ddc9a0a469e038f91b69fd2c7cf9620261725076689f',
-  same_site: :lax,
-  secure: false
+  secret: ENV['SESSION_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393',
+  same_site: ENV['RACK_ENV'] == 'production' ? :none : :lax,
+  secure: ENV['RACK_ENV'] == 'production'
 }
 
+# --- Route Mapping ---
+# This block tells the server which controller to use for each URL prefix.
 run Rack::Builder.new {
   map('/auth') { run AuthController }
-  map('/quests') { run QuestsController }
-  map('/feedback') { run FeedbackController }
-  map('/leaderboard') { run LeaderboardController }
   map('/dashboard') { run DashboardController }
+  map('/feedback') { run FeedbackController }
+  map('/quests') { run QuestsController }
+  map('/leaderboard') { run LeaderboardController }
 }
