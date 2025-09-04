@@ -20,13 +20,18 @@ class ApplicationController < Sinatra::Base
   
   helpers do
     def current_user
+      # --- NEW LOGS ---
+      logger.info "Checking for current user. Session ID from cookie: #{session[:user_id]}"
       @current_user ||= User.find_by(id: session[:user_id])
+      logger.info "User found: #{@current_user.nil? ? 'No' : "Yes, ID: #{@current_user.id}"}"
+      # --- END LOGS ---
+      @current_user
     end
     def protected!
       halt 401, json({ error: 'Unauthorized' }) unless current_user
     end
   end
-
+  
   # JSON Body Parser
   before do
     @request_payload = {}

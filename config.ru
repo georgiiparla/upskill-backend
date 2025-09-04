@@ -15,6 +15,10 @@ use Rack::Cors do
   end
 end
 
+if ENV['RACK_ENV'] == 'production'
+  use Rack::SSL
+end
+
 # Session Middleware with production-safe settings
 use Rack::Session::Cookie, {
   key: 'rack.session',
