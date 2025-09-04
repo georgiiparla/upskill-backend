@@ -1,5 +1,6 @@
 require 'rack/cors'
 require_relative './app/controllers/application_controller'
+require 'rack/ssl'
 
 # Load all individual controllers
 Dir["./app/controllers/*.rb"].each { |file| require file }
