@@ -18,7 +18,7 @@ class AuthController < ApplicationController
     if user&.authenticate(@request_payload['password'])
       session[:user_id] = user.id
       # --- NEW LOG ---
-      logger.info "Successful login for user #{user.email}. Setting session[:user_id] to #{user.id}"
+      settings.logger.info "Successful login for user #{user.email}. Setting session[:user_id] to #{user.id}"
       # --- END LOG ---
       json({ message: 'Logged in successfully', user: { id: user.id, username: user.username, email: user.email } })
     else

@@ -9,12 +9,12 @@ gem 'activerecord', '~> 7.0'
 gem 'puma'
 gem 'rackup'
 gem 'rack-cors'
-gem 'rack-ssl'
 gem 'sinatra-contrib'
 gem 'bcrypt'
 gem 'pg'
 
 group :development, :test do
+  ruby '3.4.4'
   gem 'sqlite3', '1.6.9'
   gem 'rspec'
   gem 'rack-test'

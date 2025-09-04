@@ -1,6 +1,5 @@
 require 'rack/cors'
 require_relative './app/controllers/application_controller'
-require 'rack/ssl'
 
 # Load all individual controllers
 Dir["./app/controllers/*.rb"].each { |file| require file }
@@ -14,10 +13,6 @@ use Rack::Cors do
       methods: [:get, :post, :put, :patch, :delete, :options, :head],
       credentials: true
   end
-end
-
-if ENV['RACK_ENV'] == 'production'
-  use Rack::SSL
 end
 
 # Session Middleware with production-safe settings
