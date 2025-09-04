@@ -16,19 +16,20 @@ class AuthController < ApplicationController
   post '/login' do
     user = User.find_by(email: @request_payload['email'])
     if user&.authenticate(@request_payload['password'])
-      session[:user_id] = user.id
-      # --- NEW LOG ---
-      settings.logger.info "Successful login for user #{user.email}. Setting session[:user_id] to #{user.id}"
-      # --- END LOG ---
-      json({ message: 'Logged in successfully', user: { id: user.id, username: user.username, email: user.email } })
+      token = encode_token({ user_id: user.id })
+      settings.logger.info "Successful login for user #{user.email}. Returning JWT."
+      json({ 
+        message: 'Logged in successfully', 
+        user: { id: user.id, username: user.username, email: user.email },
+        token: token 
+      })
     else
       halt 401, json({ error: 'Invalid email or password' })
     end
   end
 
   post '/logout' do
-    session.clear
-    json({ message: 'Logged out successfully' })
+    json({ message: 'Logout acknowledged' })
   end
 
   get '/profile' do

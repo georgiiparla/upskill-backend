@@ -4,6 +4,7 @@ require 'sinatra/json'
 require 'sinatra/activerecord'
 require 'bcrypt'
 require 'logger'
+require 'jwt' # <-- ADD THIS REQUIRE
 
 # Load all models
 Dir["./app/models/*.rb"].each { |file| require file }
@@ -19,14 +20,42 @@ class ApplicationController < Sinatra::Base
   end
   
   helpers do
+    # --- NEW JWT HELPER METHODS ---
+    def jwt_secret
+      # IMPORTANT: In a real app, use a long, secure secret from ENV
+      ENV['JWT_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393'
+    end
+
+    def encode_token(payload)
+      # Token expires in 24 hours
+      payload[:exp] = Time.now.to_i + 86400 
+      JWT.encode(payload, jwt_secret)
+    end
+
+    def decoded_token
+      auth_header = request.env['HTTP_AUTHORIZATION']
+      if auth_header
+        # The header is expected to be "Bearer <token>"
+        token = auth_header.split(' ')[1]
+        begin
+          JWT.decode(token, jwt_secret, true, algorithm: 'HS256')
+        rescue JWT::DecodeError
+          nil
+        end
+      end
+    end
+    # --- END NEW METHODS ---
+
     def current_user
-      # --- NEW LOGS ---
-      settings.logger.info "Checking for current user. Session ID from cookie: #{session[:user_id]}"
-      @current_user ||= User.find_by(id: session[:user_id])
-      settings.logger.info "User found: #{@current_user.nil? ? 'No' : "Yes, ID: #{@current_user.id}"}"
-      # --- END LOGS ---
+      if decoded_token
+        user_id = decoded_token[0]['user_id']
+        @current_user ||= User.find_by(id: user_id)
+        settings.logger.info "User found via JWT: #{@current_user ? "Yes, ID: #{@current_user.id}" : 'No'}"
+      end
+
       @current_user
     end
+
     def protected!
       halt 401, json({ error: 'Unauthorized' }) unless current_user
     end

@@ -12,6 +12,7 @@ gem 'rack-cors'
 gem 'sinatra-contrib'
 gem 'bcrypt'
 gem 'pg'
+gem 'jwt'
 
 group :development, :test do
   ruby '3.4.4'

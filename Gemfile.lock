@@ -29,6 +29,8 @@ GEM
     drb (2.2.3)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
+    jwt (3.1.2)
+      base64
     logger (1.7.0)
     mini_portile2 (2.8.9)
     minitest (5.25.5)
@@ -103,6 +105,7 @@ PLATFORMS
 DEPENDENCIES
   activerecord (~> 7.0)
   bcrypt
+  jwt
   pg
   puma
   rack-cors
