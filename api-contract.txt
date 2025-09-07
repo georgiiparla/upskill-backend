@@ -1,0 +1,133 @@
+================================
+CSway Platform API Contract v1.0
+================================
+
+This document outlines the contract for the CSway Platform's internal API. All responses are in JSON format. The base URL is the address of the deployed backend server.
+
+--------------------
+1. Authentication
+--------------------
+
+Authentication is handled via JSON Web Tokens (JWT).
+
+* Upon successful login, the client receives a JWT.
+* For all protected endpoints, the client MUST send this token in the `Authorization` header.
+* Format: `Authorization: Bearer <your_jwt_here>`
+* If the token is missing, invalid, or expired, the server will respond with a `401 Unauthorized` error.
+
+-----------------
+2. Endpoints
+-----------------
+
+--- 2.1 Authentication (/auth) ---
+
+Endpoint: POST /auth/signup
+* Description: Registers a new user.
+* Authentication: Not required.
+* Request Body: { "username": "...", "email": "...", "password": "..." }
+* Frontend Consumption:
+    * Component: `components/auth/Auth.js`
+    * Action: The `signup` function in `AuthContext` is called with the form data.
+
+Endpoint: POST /auth/login
+* Description: Authenticates a user and returns a JWT.
+* Authentication: Not required.
+* Request Body: { "email": "...", "password": "..." }
+* Success Response (200 OK):
+    {
+      "message": "Logged in successfully",
+      "user": { "id": 1, "username": "...", "email": "..." },
+      "token": "ey..."
+    }
+* Frontend Consumption:
+    * Component: `components/auth/Auth.js`
+    * Action: The `login` function in `AuthContext` is called. The returned `token` and `user` object are stored in the context to manage the session.
+
+--- 2.2 Dashboard (/dashboard) ---
+
+Endpoint: GET /dashboard
+* Description: Fetches all data required for the main dashboard view.
+* Authentication: Required.
+* Success Response (200 OK):
+    {
+      "agendaItems": [ ... ],
+      "activityStream": [ ... ],
+      "meetings": [ ... ],
+      "activityData": { ... }
+    }
+* Frontend Consumption:
+    * Page: `app/dashboard/page.js`
+    * Component: `components/dashboard/Dashboard.js`
+    * Mapping:
+        Backend Key      | Frontend Prop (`initialData`)
+        -----------------|-------------------------------
+        `agendaItems`    | `initialData.agendaItems`
+        `activityStream` | `initialData.activityStream`
+        `meetings`       | `initialData.meetings`
+        `activityData`   | `initialData.activityData`
+
+--- 2.3 Feedback (/feedback_submissions & /feedback_prompts) ---
+
+Endpoint: GET /feedback_submissions
+* Description: Fetches the logged-in user's submitted feedback history (paginated).
+* Authentication: Required.
+* Success Response (200 OK):
+    {
+      "items": [
+        { "id": 1, "subject": "...", "content": "...", "sentiment": "...", "created_at": "..." }
+      ],
+      "hasMore": true
+    }
+* Frontend Consumption:
+    * Page: `app/feedback/page.js`
+    * Component: `components/feedback/Feedback.js`
+    * Mapping:
+        Backend Key (in `items` array) | Frontend Prop in `HistoryListItem`
+        -------------------------------|------------------------------------
+        `subject`                      | `subject`
+        `content`                      | `content`
+        `created_at`                   | `createdAt`
+        `sentiment`                    | Used to calculate `borderColorClass`
+
+Endpoint: GET /feedback_prompts
+* Description: Fetches all public feedback prompts.
+* Authentication: Required.
+* Success Response (200 OK):
+    {
+      "items": [
+        { "id": 1, "topic": "...", "details": "...", "status": "...", "created_at": "...", "requester_username": "..." }
+      ],
+      "hasMore": false
+    }
+* Frontend Consumption:
+    * Page: `app/feedback/page.js`
+    * Component: `components/feedback/Feedback.js`
+    * Mapping:
+        Backend Key (in `items` array) | Frontend Prop in `HistoryListItem`
+        -------------------------------|------------------------------------
+        `topic`                        | `subject`
+        `details`                      | `content`
+        `created_at`                   | `createdAt`
+        `status`                       | Used to calculate `borderColorClass`
+
+--- 2.4 Quests (/quests) ---
+
+Endpoint: GET /quests
+* Description: Fetches the list of all available quests.
+* Authentication: Required.
+* Success Response (200 OK): An array of quest objects.
+* Frontend Consumption:
+    * Page: `app/quests/page.js`
+    * Component: `components/quests/Quests.js`
+    * Mapping: The entire array is passed as `initialQuests`. The component maps over it, passing each object's keys (`title`, `description`, etc.) to a `QuestCard`.
+
+--- 2.5 Leaderboard (/leaderboard) ---
+
+Endpoint: GET /leaderboard
+* Description: Fetches the leaderboard data, sorted by points.
+* Authentication: Required.
+* Success Response (200 OK): An array of user leaderboard entries.
+* Frontend Consumption:
+    * Page: `app/leaderboard/page.js`
+    * Component: `components/leaderboard/Leaderboard.js`
+    * Mapping: The array is passed as `leaderboardData`. The component maps over it to render rows in the table.

@@ -20,14 +20,11 @@ class ApplicationController < Sinatra::Base
   end
   
   helpers do
-    # --- NEW JWT HELPER METHODS ---
     def jwt_secret
-      # IMPORTANT: In a real app, use a long, secure secret from ENV
       ENV['JWT_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393'
     end
 
     def encode_token(payload)
-      # Token expires in 24 hours
       payload[:exp] = Time.now.to_i + 86400 
       JWT.encode(payload, jwt_secret)
     end
@@ -35,7 +32,6 @@ class ApplicationController < Sinatra::Base
     def decoded_token
       auth_header = request.env['HTTP_AUTHORIZATION']
       if auth_header
-        # The header is expected to be "Bearer <token>"
         token = auth_header.split(' ')[1]
         begin
           JWT.decode(token, jwt_secret, true, algorithm: 'HS256')
@@ -44,7 +40,6 @@ class ApplicationController < Sinatra::Base
         end
       end
     end
-    # --- END NEW METHODS ---
 
     def current_user
       if decoded_token
@@ -61,7 +56,6 @@ class ApplicationController < Sinatra::Base
     end
   end
 
-  # JSON Body Parser
   before do
     @request_payload = {}
     body = request.body.read
