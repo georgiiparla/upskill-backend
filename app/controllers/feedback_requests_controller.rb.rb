@@ -56,4 +56,28 @@ class FeedbackRequestsController < ApplicationController
       json({ error: "Request not found for tag '#{params['tag']}'" })
     end
   end
+
+  delete '/:id' do
+    protected!
+
+    feedback_request = FeedbackRequest.find_by(id: params['id'])
+    
+    # Check if the request exists
+    unless feedback_request
+      halt 404, json({ error: "Feedback request not found." })
+    end
+
+    # Check if the current user is the owner of the request
+    if feedback_request.requester_id != current_user.id
+      halt 403, json({ error: "You are not authorized to delete this request." })
+    end
+
+    if feedback_request.destroy
+      status 200
+      json({ message: "Feedback request deleted successfully." })
+    else
+      status 500
+      json({ error: "Failed to delete the feedback request." })
+    end
+  end
 end

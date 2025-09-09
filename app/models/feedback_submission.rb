@@ -1,4 +1,21 @@
 class FeedbackSubmission < ActiveRecord::Base 
   belongs_to :user
   belongs_to :feedback_request, optional: true
+
+  SENTIMENT_MAP = {
+    1 => 'Needs Improvement',
+    2 => 'Meets Expectations',
+    3 => 'Exceeds Expectations',
+    4 => 'Far Exceeds Expectations'
+  }.freeze
+
+  def sentiment_text
+    SENTIMENT_MAP[self.sentiment]
+  end
+
+  def as_json(options = {})
+    super(options).merge(
+      'sentiment_text' => sentiment_text
+    )
+  end
 end

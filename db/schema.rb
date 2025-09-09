@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_09_072359) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_09_121548) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "user_id"
     t.text "action"
@@ -43,10 +43,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_09_072359) do
     t.integer "user_id"
     t.string "subject"
     t.text "content"
-    t.string "sentiment"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "feedback_request_id"
+    t.integer "sentiment"
     t.index ["feedback_request_id"], name: "index_feedback_submissions_on_feedback_request_id"
     t.index ["user_id"], name: "index_feedback_submissions_on_user_id"
   end

@@ -36,17 +36,17 @@ ActiveRecord::Base.transaction do
 
     puts "   - Creating feedback submissions in response to requests..."
     users[:taylor].feedback_submissions.create!(
-      feedback_request: request1, # Link submission to request1
+      feedback_request: request1,
       subject: "Re: Q4 Strategy Deck",
       content: "Slides 3 and 4 are solid. Slide 5's graph is a bit confusing; maybe try a bar chart instead of a pie chart?",
-      sentiment: "Neutral"
+      sentiment: 2
     )
 
     users[:alex].feedback_submissions.create!(
-      feedback_request: request2, # Link submission to request2
+      feedback_request: request2,
       subject: "Re: API Endpoint Review",
       content: "Looks good overall. I added one suggestion to handle nil inputs to prevent a potential 500 error.",
-      sentiment: "Positive"
+      sentiment: 3
     )
 
   puts "   - Creating leaderboard..."
