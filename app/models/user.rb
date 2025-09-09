@@ -8,6 +8,6 @@ class User < ActiveRecord::Base
   
   has_many :activity_streams, dependent: :destroy
   has_many :feedback_submissions, dependent: :destroy 
-  has_many :feedback_prompts, foreign_key: 'requester_id', dependent: :destroy 
+  has_many :feedback_requests, foreign_key: 'requester_id', dependent: :destroy 
   has_one :leaderboard, dependent: :destroy
 end

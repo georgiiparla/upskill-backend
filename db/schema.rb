@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_07_202920) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_09_072359) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "user_id"
     t.text "action"
@@ -26,15 +26,17 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_07_202920) do
     t.date "due_date"
   end
 
-  create_table "feedback_prompts", force: :cascade do |t|
+  create_table "feedback_requests", force: :cascade do |t|
     t.integer "requester_id", null: false
     t.string "topic", null: false
     t.text "details"
     t.string "status", default: "pending", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["requester_id"], name: "index_feedback_prompts_on_requester_id"
-    t.index ["status"], name: "index_feedback_prompts_on_status"
+    t.string "tag"
+    t.index ["requester_id"], name: "index_feedback_requests_on_requester_id"
+    t.index ["status"], name: "index_feedback_requests_on_status"
+    t.index ["tag"], name: "index_feedback_requests_on_tag", unique: true
   end
 
   create_table "feedback_submissions", force: :cascade do |t|
@@ -44,8 +46,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_07_202920) do
     t.string "sentiment"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.integer "feedback_prompt_id"
-    t.index ["feedback_prompt_id"], name: "index_feedback_submissions_on_feedback_prompt_id"
+    t.integer "feedback_request_id"
+    t.index ["feedback_request_id"], name: "index_feedback_submissions_on_feedback_request_id"
     t.index ["user_id"], name: "index_feedback_submissions_on_user_id"
   end
 
@@ -81,8 +83,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_07_202920) do
   end
 
   add_foreign_key "activity_streams", "users"
-  add_foreign_key "feedback_prompts", "users", column: "requester_id"
-  add_foreign_key "feedback_submissions", "feedback_prompts"
+  add_foreign_key "feedback_requests", "users", column: "requester_id"
+  add_foreign_key "feedback_submissions", "feedback_requests"
   add_foreign_key "feedback_submissions", "users"
   add_foreign_key "leaderboards", "users"
 end

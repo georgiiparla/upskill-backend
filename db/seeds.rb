@@ -2,7 +2,7 @@ puts "Seeding database..."
 
 ActiveRecord::Base.transaction do
   puts "   - Deleting old data..."
-  [User, Quest, FeedbackPrompt, Leaderboard, AgendaItem, ActivityStream, Meeting, FeedbackSubmission].each(&:destroy_all)
+  [FeedbackSubmission, FeedbackRequest, ActivityStream, Leaderboard, Quest, AgendaItem, Meeting, User].each(&:destroy_all)
 
   puts "   - Creating users..."
   users = {}
@@ -21,38 +21,33 @@ ActiveRecord::Base.transaction do
     { title: 'Teamwork Titan', description: 'Successfully complete a paired programming challenge.', points: 100, progress: 100, completed: true }
   ])
 
-
-
-
-
-    puts "   - Creating feedback prompts..."
-    prompt1 = users[:alex].feedback_prompts.create!(
+    puts "   - Creating feedback requests..."
+    request1 = users[:alex].feedback_requests.create!(
       topic: "Review my Q4 strategy presentation deck",
-      details: "I'm specifically looking for feedback on slides 3-5 regarding market analysis. Is the data clear enough?"
+      details: "I'm specifically looking for feedback on slides 3-5 regarding market analysis. Is the data clear enough?",
+      tag: "strategyReviewMockTag123"
     )
 
-    prompt2 = users[:casey].feedback_prompts.create!(
+    request2 = users[:casey].feedback_requests.create!(
       topic: "Code review for new API endpoint",
-      details: "Before I merge this branch, can someone check the error handling logic in `auth_controller.rb`?"
+      details: "Before I merge this branch, can someone check the error handling logic in `auth_controller.rb`?",
+      tag: "apiRefactorMockTag456"
     )
 
-    puts "   - Creating feedback submissions in response to prompts..."
+    puts "   - Creating feedback submissions in response to requests..."
     users[:taylor].feedback_submissions.create!(
-      feedback_prompt: prompt1, # Link submission to prompt1
+      feedback_request: request1, # Link submission to request1
       subject: "Re: Q4 Strategy Deck",
       content: "Slides 3 and 4 are solid. Slide 5's graph is a bit confusing; maybe try a bar chart instead of a pie chart?",
       sentiment: "Neutral"
     )
 
     users[:alex].feedback_submissions.create!(
-      feedback_prompt: prompt2, # Link submission to prompt2
+      feedback_request: request2, # Link submission to request2
       subject: "Re: API Endpoint Review",
       content: "Looks good overall. I added one suggestion to handle nil inputs to prevent a potential 500 error.",
       sentiment: "Positive"
     )
-
-
-
 
   puts "   - Creating leaderboard..."
   Leaderboard.create!([
@@ -87,3 +82,4 @@ ActiveRecord::Base.transaction do
 end
 
 puts "Seeding complete."
+

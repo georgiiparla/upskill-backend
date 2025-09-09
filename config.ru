@@ -16,8 +16,8 @@ end
 run Rack::Builder.new {
   map('/auth') { run AuthController }
   map('/dashboard') { run DashboardController }
-  map('/feedback_submissions') { run FeedbackController } 
-  map('/feedback_prompts') { run FeedbackPromptsController }
+  map('/feedback_submissions') { run FeedbackSubmissionsController } 
+  map('/feedback_requests') { run FeedbackRequestsController }
   map('/quests') { run QuestsController }
   map('/leaderboard') { run LeaderboardController }
 }
