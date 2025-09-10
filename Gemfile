@@ -16,7 +16,6 @@ gem 'pg'
 gem 'jwt'
 
 group :development, :test do
-  ruby '3.4.4'
   gem 'sqlite3', '1.6.9'
   gem 'rspec'
   gem 'rack-test'
