@@ -2,7 +2,6 @@ class DashboardController < ApplicationController
   get '/' do
     protected!
     agenda_items = AgendaItem.order(due_date: :asc)
-    # Eager load the associated user to prevent N+1 queries
     activity_stream = ActivityStream.includes(:user).order(created_at: :desc).limit(5)
     meetings = Meeting.order(meeting_date: :desc)
     

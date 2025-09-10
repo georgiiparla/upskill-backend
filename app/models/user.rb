@@ -10,4 +10,6 @@ class User < ActiveRecord::Base
   has_many :feedback_submissions, dependent: :destroy 
   has_many :feedback_requests, foreign_key: 'requester_id', dependent: :destroy 
   has_one :leaderboard, dependent: :destroy
+
+  has_many :feedback_submission_likes, dependent: :destroy
 end

@@ -1,6 +1,7 @@
 class FeedbackSubmission < ActiveRecord::Base 
   belongs_to :user
   belongs_to :feedback_request, optional: true
+  has_many :feedback_submission_likes, dependent: :destroy
 
   SENTIMENT_MAP = {
     1 => 'Needs Improvement',

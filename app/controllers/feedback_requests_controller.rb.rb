@@ -1,9 +1,21 @@
+require_relative '../helpers/anonymizer'
+
 class FeedbackRequestsController < ApplicationController
   get '/' do
     protected!
     
     all_requests = FeedbackRequest.includes(:requester).order(created_at: :desc)
     
+    if params['search'] && !params['search'].empty?
+      search_term = "%#{params['search'].downcase}%"
+      all_requests = all_requests.joins(:requester).where(
+        "lower(feedback_requests.topic) LIKE ? OR " +
+        "lower(feedback_requests.tag) LIKE ? OR " +
+        "lower(users.username) LIKE ?",
+        search_term, search_term, search_term
+      )
+    end
+
     requests_json = all_requests.map do |request| 
       request.as_json.merge(
         requester_username: request.requester.username,
@@ -38,10 +50,25 @@ class FeedbackRequestsController < ApplicationController
     request = FeedbackRequest.find_by(tag: params['tag'])
 
     if request
-      submissions = request.feedback_submissions.includes(:user).order(created_at: :desc)
+      submissions = request.feedback_submissions.includes(:user, :feedback_submission_likes).order(created_at: :desc)
       
+      author_to_anonymous_name = {}
+
       submissions_json = submissions.map do |s|
-        s.as_json.merge(authorName: s.user.username)
+        anonymous_name = author_to_anonymous_name.fetch(s.user.id) do |user_id|
+          new_name = Anonymizer.generate_name
+          while author_to_anonymous_name.has_value?(new_name)
+            new_name = Anonymizer.generate_name
+          end
+          author_to_anonymous_name[user_id] = new_name
+        end
+        
+        s.as_json.merge(
+          authorName: anonymous_name,
+          isCommentOwner: s.user_id == current_user.id,
+          likes: s.feedback_submission_likes.size,
+          initialLiked: s.feedback_submission_likes.any? { |like| like.user_id == current_user.id }
+        )
       end
 
       json({
@@ -57,17 +84,37 @@ class FeedbackRequestsController < ApplicationController
     end
   end
 
+  patch '/:id' do
+    protected!
+
+    feedback_request = FeedbackRequest.find_by(id: params['id'])
+    halt 404, json({ error: "Feedback request not found." }) unless feedback_request
+    
+    if feedback_request.requester_id != current_user.id
+      halt 403, json({ error: "You are not authorized to modify this request." })
+    end
+
+    new_status = @request_payload['status']
+    if new_status == 'closed' && feedback_request.update(status: new_status)
+      json feedback_request.as_json.merge(
+        requester_username: feedback_request.requester.username,
+        isOwner: true
+      )
+    else
+      status 422
+      json({ errors: feedback_request.errors.full_messages.presence || "Invalid status provided." })
+    end
+  end
+
   delete '/:id' do
     protected!
 
     feedback_request = FeedbackRequest.find_by(id: params['id'])
     
-    # Check if the request exists
     unless feedback_request
       halt 404, json({ error: "Feedback request not found." })
     end
 
-    # Check if the current user is the owner of the request
     if feedback_request.requester_id != current_user.id
       halt 403, json({ error: "You are not authorized to delete this request." })
     end

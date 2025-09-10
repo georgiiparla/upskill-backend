@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_09_121548) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_10_092400) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "user_id"
     t.text "action"
@@ -37,6 +37,16 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_09_121548) do
     t.index ["requester_id"], name: "index_feedback_requests_on_requester_id"
     t.index ["status"], name: "index_feedback_requests_on_status"
     t.index ["tag"], name: "index_feedback_requests_on_tag", unique: true
+  end
+
+  create_table "feedback_submission_likes", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "feedback_submission_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["feedback_submission_id"], name: "index_feedback_submission_likes_on_feedback_submission_id"
+    t.index ["user_id", "feedback_submission_id"], name: "idx_on_user_id_feedback_submission_id_d5f433d3e0", unique: true
+    t.index ["user_id"], name: "index_feedback_submission_likes_on_user_id"
   end
 
   create_table "feedback_submissions", force: :cascade do |t|
@@ -84,6 +94,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_09_121548) do
 
   add_foreign_key "activity_streams", "users"
   add_foreign_key "feedback_requests", "users", column: "requester_id"
+  add_foreign_key "feedback_submission_likes", "feedback_submissions"
+  add_foreign_key "feedback_submission_likes", "users"
   add_foreign_key "feedback_submissions", "feedback_requests"
   add_foreign_key "feedback_submissions", "users"
   add_foreign_key "leaderboards", "users"

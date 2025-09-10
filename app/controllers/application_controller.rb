@@ -1,12 +1,10 @@
-# app/controllers/application_controller.rb
 require 'sinatra/base'
 require 'sinatra/json'
 require 'sinatra/activerecord'
 require 'bcrypt'
 require 'logger'
-require 'jwt' # <-- ADD THIS REQUIRE
+require 'jwt'
 
-# Load all models
 Dir["./app/models/*.rb"].each { |file| require file }
 
 class ApplicationController < Sinatra::Base
