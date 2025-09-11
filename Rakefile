@@ -2,6 +2,8 @@ require 'sinatra'
 require 'sinatra/activerecord'
 require 'sinatra/activerecord/rake'
 
+require_relative './config/app_config'
+
 # Load application models for rake tasks
 Dir["./app/models/*.rb"].each { |file| require file }
 
