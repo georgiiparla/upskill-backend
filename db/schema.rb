@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_10_092400) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_11_131751) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "user_id"
     t.text "action"
@@ -34,6 +34,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_10_092400) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "tag"
+    t.datetime "expires_at"
     t.index ["requester_id"], name: "index_feedback_requests_on_requester_id"
     t.index ["status"], name: "index_feedback_requests_on_status"
     t.index ["tag"], name: "index_feedback_requests_on_tag", unique: true
