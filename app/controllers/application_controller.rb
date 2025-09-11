@@ -5,7 +5,12 @@ require 'bcrypt'
 require 'logger'
 require 'jwt'
 
+require_relative '../../config/app_config'
+
 Dir["./app/models/*.rb"].each { |file| require file }
+
+$last_expiration_run ||= Time.now - 1.year
+$expiration_lock ||= Mutex.new
 
 class ApplicationController < Sinatra::Base
   set :database_file, '../../config/database.yml'
@@ -55,6 +60,20 @@ class ApplicationController < Sinatra::Base
   end
 
   before do
+    # This acts as a simple, traffic-based cron job.
+    if Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+      $expiration_lock.synchronize do
+        if Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+          logger.info "Running job to close expired requests..."
+          count = FeedbackRequest.where(status: 'pending').where('expires_at < ?', Time.now).update_all(status: 'closed')
+          logger.info "Closed #{count} expired request(s)." if count > 0
+          $last_expiration_run = Time.now
+        end
+      end
+    end
+
+
+
     @request_payload = {}
     body = request.body.read
     if !body.empty? && request.content_type&.include?("application/json")
