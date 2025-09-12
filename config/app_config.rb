@@ -8,7 +8,7 @@ module AppConfig
 
   else
     
-    FEEDBACK_REQUEST_LIFESPAN = 30 # 30 seconds
+    FEEDBACK_REQUEST_LIFESPAN = 1 * 30 # 30 seconds
     EXPIRATION_JOB_FREQUENCY = 5 # 5 seconds
 
   end
