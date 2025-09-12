@@ -21,33 +21,57 @@ ActiveRecord::Base.transaction do
     { title: 'Teamwork Titan', description: 'Successfully complete a paired programming challenge.', points: 100, progress: 100, completed: true }
   ])
 
-    puts "   - Creating feedback requests..."
-    request1 = users[:alex].feedback_requests.create!(
-      topic: "Review my Q4 strategy presentation deck",
-      details: "I'm specifically looking for feedback on slides 3-5 regarding market analysis. Is the data clear enough?",
-      tag: "strategyReviewMockTag123"
-    )
+  puts "   - Creating feedback requests..."
+  # Create two PENDING requests
+  request1 = users[:alex].feedback_requests.create!(
+    topic: "Review my Q4 strategy presentation deck",
+    details: "I'm specifically looking for feedback on slides 3-5 regarding market analysis. Is the data clear enough?",
+    tag: "strategyReviewMockTag123"
+  )
 
-    request2 = users[:casey].feedback_requests.create!(
-      topic: "Code review for new API endpoint",
-      details: "Before I merge this branch, can someone check the error handling logic in `auth_controller.rb`?",
-      tag: "apiRefactorMockTag456"
-    )
+  request2 = users[:casey].feedback_requests.create!(
+    topic: "Code review for new API endpoint",
+    details: "Before I merge this branch, can someone check the error handling logic in `auth_controller.rb`?",
+    tag: "apiRefactorMockTag456"
+  )
+  
+  # Manually extend their expiration to prevent them from auto-closing during development
+  future_expiry = Time.now + 7.days
+  request1.update_column(:expires_at, future_expiry)
+  request2.update_column(:expires_at, future_expiry)
+  
+  # Create one request that is already CLOSED for testing UI states
+  request3 = users[:jordan].feedback_requests.create!(
+    topic: "Thoughts on the new onboarding doc?",
+    details: "This is a draft of the new onboarding document for junior developers. Is it clear and comprehensive?",
+    tag: "onboardingDocMockTag789",
+    status: 'closed'
+  )
+  # Ensure its expiration is in the past
+  request3.update_column(:expires_at, Time.now - 2.days)
 
-    puts "   - Creating feedback submissions in response to requests..."
-    users[:taylor].feedback_submissions.create!(
-      feedback_request: request1,
-      subject: "Re: Q4 Strategy Deck",
-      content: "Slides 3 and 4 are solid. Slide 5's graph is a bit confusing; maybe try a bar chart instead of a pie chart?",
-      sentiment: 2
-    )
 
-    users[:alex].feedback_submissions.create!(
-      feedback_request: request2,
-      subject: "Re: API Endpoint Review",
-      content: "Looks good overall. I added one suggestion to handle nil inputs to prevent a potential 500 error.",
-      sentiment: 3
-    )
+  puts "   - Creating feedback submissions in response to requests..."
+  users[:taylor].feedback_submissions.create!(
+    feedback_request: request1,
+    subject: "Re: Q4 Strategy Deck",
+    content: "Slides 3 and 4 are solid. Slide 5's graph is a bit confusing; maybe try a bar chart instead of a pie chart?",
+    sentiment: 2
+  )
+
+  users[:alex].feedback_submissions.create!(
+    feedback_request: request2,
+    subject: "Re: API Endpoint Review",
+    content: "Looks good overall. I added one suggestion to handle nil inputs to prevent a potential 500 error.",
+    sentiment: 3
+  )
+
+  users[:casey].feedback_submissions.create!(
+    feedback_request: request3,
+    subject: "Re: Onboarding Doc",
+    content: "This looks fantastic! It's much clearer than the old one. I'd just add a link to the dev environment setup guide.",
+    sentiment: 3
+  )
 
   puts "   - Creating leaderboard..."
   Leaderboard.create!([
@@ -82,4 +106,3 @@ ActiveRecord::Base.transaction do
 end
 
 puts "Seeding complete."
-
