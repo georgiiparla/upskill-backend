@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_11_131751) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_12_195603) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "user_id"
     t.text "action"
@@ -90,7 +90,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_11_131751) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
-    t.index ["username"], name: "index_users_on_username", unique: true
   end
 
   add_foreign_key "activity_streams", "users"
