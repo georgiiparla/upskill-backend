@@ -3,7 +3,7 @@ require 'bcrypt'
 class User < ActiveRecord::Base
   has_secure_password # Handles password hashing via bcrypt
 
-  validates :username, presence: true, uniqueness: true
+  validates :username, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   
   has_many :activity_streams, dependent: :destroy
