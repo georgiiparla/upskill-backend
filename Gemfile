@@ -16,7 +16,6 @@ gem 'jwt'
 gem 'google-api-client', '~> 0.53'
 
 group :development, :test do
-  ruby '3.2.3'
   gem 'dotenv'
   gem 'sqlite3', '1.6.9'
   gem 'rspec'
