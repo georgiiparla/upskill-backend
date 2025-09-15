@@ -12,4 +12,21 @@ class User < ActiveRecord::Base
   has_one :leaderboard, dependent: :destroy
 
   has_many :feedback_submission_likes, dependent: :destroy
+
+  def self.is_email_authorized?(email)
+    return false unless email.is_a?(String)
+
+    allowed_domain = ENV['ALLOWED_DOMAIN']
+    whitelisted_emails_str = ENV['WHITELISTED_EMAILS'] || ''
+    whitelisted_emails = whitelisted_emails_str.split(',').map(&:strip)
+
+    is_domain_allowed = allowed_domain && email.end_with?("@#{allowed_domain}")
+    is_email_whitelisted = whitelisted_emails.include?(email)
+
+    is_domain_allowed || is_email_whitelisted
+  end
+
+  def authorized?
+    self.class.is_email_authorized?(self.email)
+  end
 end

@@ -9,11 +9,26 @@ class DashboardController < ApplicationController
       { id: activity.id, user_name: activity.user.username, action: activity.action, created_at: activity.created_at }
     end
     
-    mock_activity_data = {
-      personal: { quests: { allTime: 5, thisWeek: 1 }, feedback: { allTime: 8, thisWeek: 3 } },
-      team: { quests: { allTime: 256, thisWeek: 12 }, feedback: { allTime: 891, thisWeek: 34 } }
+    
+    start_of_week = Time.now.beginning_of_week
+
+    personal_feedback_all_time = current_user.feedback_submissions.count
+    personal_feedback_this_week = current_user.feedback_submissions.where('created_at >= ?', start_of_week).count
+
+    team_feedback_all_time = FeedbackSubmission.count
+    team_feedback_this_week = FeedbackSubmission.where('created_at >= ?', start_of_week).count
+
+    activity_data = {
+      personal: {
+        quests: { allTime: 0, thisWeek: 0 },
+        feedback: { allTime: personal_feedback_all_time, thisWeek: personal_feedback_this_week }
+      },
+      team: {
+        quests: { allTime: 0, thisWeek: 0 },
+        feedback: { allTime: team_feedback_all_time, thisWeek: team_feedback_this_week }
+      }
     }
 
-    json({ agendaItems: agenda_items, activityStream: activity_json, meetings: meetings, activityData: mock_activity_data })
+    json({ agendaItems: agenda_items, activityStream: activity_json, meetings: meetings, activityData: activity_data })
   end
 end
