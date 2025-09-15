@@ -1,5 +1,3 @@
-# File: db/seeds.rb
-
 puts "Seeding database with mock data..."
 
 ActiveRecord::Base.transaction do
@@ -15,6 +13,7 @@ ActiveRecord::Base.transaction do
   users[:jamie]  = User.create!(username: 'Mock User Jamie',  email: 'jamie@example.com',  password: 'password123')
   users[:morgan] = User.create!(username: 'Mock User Morgan', email: 'morgan@example.com', password: 'password123')
 
+  # --- (Quests, Feedback Requests, Submissions, Leaderboard sections are unchanged) ---
   puts "   - Creating mock quests..."
   Quest.create!([
     { title: '[MOCK] Adaptability Ace', description: '[MOCK] Complete the "Handling Change" module and score 90% on the quiz.', points: 150, progress: 100, completed: true },
@@ -81,11 +80,13 @@ ActiveRecord::Base.transaction do
     { user: users[:morgan], points: 2950, badges: '🎯' }
   ])
 
+
   puts "   - Creating mock dashboard items..."
+
   AgendaItem.create!([
-    { type: 'article', title: '[MOCK] The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18' },
-    { type: 'meeting', title: '[MOCK] Q3 Project Kickoff', category: 'Planning', due_date: '2025-08-19' },
-    { type: 'article', title: '[MOCK] Leading Without Authority', category: 'Leadership', due_date: '2025-08-20' }
+    { type: 'article', title: '[MOCK] The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex] },
+    { type: 'meeting', title: '[MOCK] Q3 Project Kickoff', category: 'Planning', due_date: '2025-08-19', editor: users[:casey] },
+    { type: 'article', title: '[MOCK] Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] }
   ])
   
   ActivityStream.create!([
