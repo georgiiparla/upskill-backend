@@ -13,6 +13,7 @@ $last_expiration_run ||= Time.now - 1.year
 $expiration_lock ||= Mutex.new
 
 class ApplicationController < Sinatra::Base
+
   set :database_file, '../../config/database.yml'
 
   configure do
@@ -23,6 +24,7 @@ class ApplicationController < Sinatra::Base
   end
   
   helpers do
+
     def jwt_secret
       ENV['JWT_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393'
     end
@@ -34,6 +36,7 @@ class ApplicationController < Sinatra::Base
 
     def decoded_token
       auth_header = request.env['HTTP_AUTHORIZATION']
+
       if auth_header
         token = auth_header.split(' ')[1]
         begin
@@ -42,12 +45,20 @@ class ApplicationController < Sinatra::Base
           nil
         end
       end
+
     end
 
     def current_user
       if decoded_token
         user_id = decoded_token[0]['user_id']
-        @current_user ||= User.find_by(id: user_id)
+        user = User.find_by(id: user_id)
+        
+        if user && !user.authorized?
+          # If the user is no longer authorized, treat them as logged out.
+          return nil 
+        end
+
+        @current_user ||= user
         settings.logger.info "User found via JWT: #{@current_user ? "Yes, ID: #{@current_user.id}" : 'No'}"
       end
 
@@ -83,5 +94,6 @@ class ApplicationController < Sinatra::Base
         halt 400, json({ error: 'Invalid JSON in request body' })
       end
     end
+    
   end
 end

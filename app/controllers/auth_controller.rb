@@ -50,6 +50,11 @@ class AuthController < ApplicationController
     oauth2_service.authorization = authorizer
     user_info = oauth2_service.get_userinfo
 
+    unless User.is_email_authorized?(user_info.email)
+      redirect "#{ENV['FRONTEND_URL']}/login?error=unauthorized_email"
+      return
+    end
+
     # Find or Create User (same logic as before)
     user = User.find_by(email: user_info.email)
     unless user
