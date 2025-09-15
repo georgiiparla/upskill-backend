@@ -26,4 +26,6 @@ run Rack::Builder.new {
   map('/feedback_requests') { run FeedbackRequestsController }
   map('/quests') { run QuestsController }
   map('/leaderboard') { run LeaderboardController }
+  map('/admin') { run AdminController }
+  map('/agenda_items') { run AgendaItemsController }
 }

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_12_195603) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_15_182853) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "user_id"
     t.text "action"
@@ -24,6 +24,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_12_195603) do
     t.string "title"
     t.string "category"
     t.date "due_date"
+    t.string "icon_name", default: "ClipboardList", null: false
+    t.integer "editor_id"
+    t.index ["editor_id"], name: "index_agenda_items_on_editor_id"
   end
 
   create_table "feedback_requests", force: :cascade do |t|
@@ -93,6 +96,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_12_195603) do
   end
 
   add_foreign_key "activity_streams", "users"
+  add_foreign_key "agenda_items", "users", column: "editor_id"
   add_foreign_key "feedback_requests", "users", column: "requester_id"
   add_foreign_key "feedback_submission_likes", "feedback_submissions"
   add_foreign_key "feedback_submission_likes", "users"
