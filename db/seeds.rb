@@ -2,7 +2,6 @@ puts "Seeding database with mock data..."
 
 ActiveRecord::Base.transaction do
   puts "   - Deleting old data..."
-  # ActivityStream is now first to avoid foreign key issues on deletion
   [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, Meeting, User].each(&:destroy_all)
 
   puts "   - Creating mock users..."
@@ -26,13 +25,15 @@ ActiveRecord::Base.transaction do
   request1 = users[:alex].feedback_requests.create!(
     topic: "[MOCK] Review my Q4 strategy presentation deck",
     details: "[MOCK] I'm specifically looking for feedback on slides 3-5 regarding market analysis. Is the data clear enough?",
-    tag: "strategyReviewMockTag123"
+    tag: "strategyReviewMockTag123",
+    visibility: 'public'
   )
 
   request2 = users[:casey].feedback_requests.create!(
     topic: "[MOCK] Code review for new API endpoint",
     details: "[MOCK] Before I merge this branch, can someone check the error handling logic in `auth_controller.rb`?",
-    tag: "apiRefactorMockTag456"
+    tag: "apiRefactorMockTag456",
+    visibility: 'requester_only'
   )
   
   future_expiry = Time.now + 7.days
@@ -90,7 +91,6 @@ ActiveRecord::Base.transaction do
 
   puts "   - Creating new, structured mock activity stream..."
   
-  # Event 1: A user requests feedback
   ActivityStream.create!(
     actor: users[:alex],
     target: request1,
@@ -98,7 +98,6 @@ ActiveRecord::Base.transaction do
     created_at: request1.created_at
   )
 
-  # Event 2: A request is closed by the system (actor is nil)
   ActivityStream.create!(
     actor: nil,
     target: request3,
@@ -106,7 +105,6 @@ ActiveRecord::Base.transaction do
     created_at: request3.updated_at
   )
 
-  # Event 3: A user updates an agenda item
   agenda_item = AgendaItem.find_by!(title: '[MOCK] Q3 Project Kickoff')
   ActivityStream.create!(
     actor: users[:casey],

@@ -7,6 +7,8 @@ class FeedbackRequest < ActiveRecord::Base
   validates :topic, presence: true
   validates :tag, presence: true, uniqueness: true
 
+  validates :visibility, inclusion: { in: %w(public requester_only), message: "%{value} is not a valid visibility setting" }
+
   before_create :set_expiration_date
 
   private

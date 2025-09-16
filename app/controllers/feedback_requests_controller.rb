@@ -29,7 +29,8 @@ class FeedbackRequestsController < ApplicationController
   post '/' do
     protected!
     
-    request_params = @request_payload.slice('topic', 'details', 'tag')
+    # Add 'visibility' to the allowed parameters
+    request_params = @request_payload.slice('topic', 'details', 'tag', 'visibility')
     feedback_request = current_user.feedback_requests.build(request_params)
 
     if feedback_request.save
@@ -51,31 +52,35 @@ class FeedbackRequestsController < ApplicationController
     request = FeedbackRequest.find_by(tag: params['tag'])
 
     if request
-      submissions = request.feedback_submissions.includes(:user, :feedback_submission_likes).order(created_at: :desc)
+      is_owner = request.requester_id == current_user.id
+      can_view_submissions = request.visibility == 'public' || is_owner
       
-      author_to_anonymous_name = {}
+      submissions_json = []
 
-      submissions_json = submissions.map do |s|
-        anonymous_name = author_to_anonymous_name.fetch(s.user.id) do |user_id|
-          new_name = Anonymizer.generate_name
-          while author_to_anonymous_name.has_value?(new_name)
+      if can_view_submissions
+        submissions = request.feedback_submissions.includes(:user, :feedback_submission_likes).order(created_at: :desc)
+        author_to_anonymous_name = {}
+        submissions_json = submissions.map do |s|
+          anonymous_name = author_to_anonymous_name.fetch(s.user.id) do |user_id|
             new_name = Anonymizer.generate_name
+            while author_to_anonymous_name.has_value?(new_name)
+              new_name = Anonymizer.generate_name
+            end
+            author_to_anonymous_name[user_id] = new_name
           end
-          author_to_anonymous_name[user_id] = new_name
+          s.as_json.merge(
+            authorName: anonymous_name,
+            isCommentOwner: s.user_id == current_user.id,
+            likes: s.feedback_submission_likes.size,
+            initialLiked: s.feedback_submission_likes.any? { |like| like.user_id == current_user.id }
+          )
         end
-        
-        s.as_json.merge(
-          authorName: anonymous_name,
-          isCommentOwner: s.user_id == current_user.id,
-          likes: s.feedback_submission_likes.size,
-          initialLiked: s.feedback_submission_likes.any? { |like| like.user_id == current_user.id }
-        )
       end
 
       json({
         requestData: request.as_json.merge(
           requester_username: request.requester.username,
-          isOwner: request.requester_id == current_user.id
+          isOwner: is_owner
         ),
         submissions: submissions_json
       })
