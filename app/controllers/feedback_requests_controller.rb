@@ -33,6 +33,7 @@ class FeedbackRequestsController < ApplicationController
     feedback_request = current_user.feedback_requests.build(request_params)
 
     if feedback_request.save
+      ActivityStream.create(actor: current_user, event_type: 'feedback_requested', target: feedback_request)
       status 201
       json feedback_request.as_json.merge(
         requester_username: current_user.username,
@@ -96,6 +97,7 @@ class FeedbackRequestsController < ApplicationController
 
     new_status = @request_payload['status']
     if new_status == 'closed' && feedback_request.update(status: new_status)
+      ActivityStream.create(actor: current_user, event_type: 'feedback_closed', target: feedback_request)
       json feedback_request.as_json.merge(
         requester_username: feedback_request.requester.username,
         isOwner: true
