@@ -1,9 +1,13 @@
 class FeedbackRequest < ActiveRecord::Base
   belongs_to :requester, class_name: 'User'
-  has_many :feedback_submissions
+  has_many :feedback_submissions, dependent: :destroy
+
+  has_many :activity_streams, as: :target, dependent: :destroy
 
   validates :topic, presence: true
   validates :tag, presence: true, uniqueness: true
+
+  validates :visibility, inclusion: { in: %w(public requester_only), message: "%{value} is not a valid visibility setting" }
 
   before_create :set_expiration_date
 

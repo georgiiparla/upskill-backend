@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_16_104210) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_16_133316) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -44,6 +44,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_16_104210) do
     t.datetime "updated_at", null: false
     t.string "tag"
     t.datetime "expires_at"
+    t.string "visibility", default: "public", null: false
     t.index ["requester_id"], name: "index_feedback_requests_on_requester_id"
     t.index ["status"], name: "index_feedback_requests_on_status"
     t.index ["tag"], name: "index_feedback_requests_on_tag", unique: true

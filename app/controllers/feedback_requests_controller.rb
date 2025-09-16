@@ -29,7 +29,7 @@ class FeedbackRequestsController < ApplicationController
   post '/' do
     protected!
     
-    request_params = @request_payload.slice('topic', 'details', 'tag')
+    request_params = @request_payload.slice('topic', 'details', 'tag', 'visibility')
     feedback_request = current_user.feedback_requests.build(request_params)
 
     if feedback_request.save
@@ -51,31 +51,35 @@ class FeedbackRequestsController < ApplicationController
     request = FeedbackRequest.find_by(tag: params['tag'])
 
     if request
-      submissions = request.feedback_submissions.includes(:user, :feedback_submission_likes).order(created_at: :desc)
+      is_owner = request.requester_id == current_user.id
+      can_view_submissions = request.visibility == 'public' || is_owner
       
-      author_to_anonymous_name = {}
+      submissions_json = []
 
-      submissions_json = submissions.map do |s|
-        anonymous_name = author_to_anonymous_name.fetch(s.user.id) do |user_id|
-          new_name = Anonymizer.generate_name
-          while author_to_anonymous_name.has_value?(new_name)
+      if can_view_submissions
+        submissions = request.feedback_submissions.includes(:user, :feedback_submission_likes).order(created_at: :desc)
+        author_to_anonymous_name = {}
+        submissions_json = submissions.map do |s|
+          anonymous_name = author_to_anonymous_name.fetch(s.user.id) do |user_id|
             new_name = Anonymizer.generate_name
+            while author_to_anonymous_name.has_value?(new_name)
+              new_name = Anonymizer.generate_name
+            end
+            author_to_anonymous_name[user_id] = new_name
           end
-          author_to_anonymous_name[user_id] = new_name
+          s.as_json.merge(
+            authorName: anonymous_name,
+            isCommentOwner: s.user_id == current_user.id,
+            likes: s.feedback_submission_likes.size,
+            initialLiked: s.feedback_submission_likes.any? { |like| like.user_id == current_user.id }
+          )
         end
-        
-        s.as_json.merge(
-          authorName: anonymous_name,
-          isCommentOwner: s.user_id == current_user.id,
-          likes: s.feedback_submission_likes.size,
-          initialLiked: s.feedback_submission_likes.any? { |like| like.user_id == current_user.id }
-        )
       end
 
       json({
         requestData: request.as_json.merge(
           requester_username: request.requester.username,
-          isOwner: request.requester_id == current_user.id
+          isOwner: is_owner
         ),
         submissions: submissions_json
       })
@@ -105,6 +109,30 @@ class FeedbackRequestsController < ApplicationController
     else
       status 422
       json({ errors: feedback_request.errors.full_messages.presence || "Invalid status provided." })
+    end
+  end
+
+  patch '/:id/visibility' do
+    protected!
+
+    feedback_request = FeedbackRequest.find_by(id: params['id'])
+    halt 404, json({ error: "Feedback request not found." }) unless feedback_request
+
+    if feedback_request.requester_id != current_user.id
+      halt 403, json({ error: "You are not authorized to change this request's visibility." })
+    end
+
+    new_visibility = @request_payload['visibility']
+    feedback_request.visibility = new_visibility
+
+    if feedback_request.save
+      json feedback_request.as_json.merge(
+        requester_username: feedback_request.requester.username,
+        isOwner: true
+      )
+    else
+      status 422
+      json({ errors: feedback_request.errors.full_messages })
     end
   end
 
