@@ -1,5 +1,3 @@
-# File: app/controllers/agenda_items_controller.rb
-
 class AgendaItemsController < ApplicationController
   
   VALID_ICONS = ['ClipboardList', 'BookOpen', 'FileText', 'MessageSquare', 'Lightbulb']
@@ -12,7 +10,6 @@ class AgendaItemsController < ApplicationController
 
     update_params = { editor: current_user } # Always set the current user as the editor
 
-    # Handle title update
     if @request_payload.key?('title')
       new_title = @request_payload['title']
       max_length = 94
@@ -21,15 +18,19 @@ class AgendaItemsController < ApplicationController
       update_params[:title] = new_title
     end
     
-    # Handle icon update
     if @request_payload.key?('icon_name')
       new_icon = @request_payload['icon_name']
       halt 422, json({ errors: ["Invalid icon specified."] }) unless VALID_ICONS.include?(new_icon)
       update_params[:icon_name] = new_icon
     end
 
+    if @request_payload.key?('link')
+      update_params[:link] = @request_payload['link']
+    end
+
     if agenda_item.update(update_params)
-      # Return the updated item with the editor's username
+      ActivityStream.create(actor: current_user, event_type: 'agenda_updated', target: agenda_item)
+      
       json agenda_item.as_json.merge(
         editor_username: agenda_item.editor&.username
       )

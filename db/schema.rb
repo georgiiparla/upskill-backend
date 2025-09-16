@@ -10,13 +10,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_15_182853) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_16_104210) do
   create_table "activity_streams", force: :cascade do |t|
-    t.integer "user_id"
-    t.text "action"
+    t.integer "actor_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_id"], name: "index_activity_streams_on_user_id"
+    t.string "event_type", null: false
+    t.string "target_type"
+    t.integer "target_id"
+    t.index ["actor_id"], name: "index_activity_streams_on_actor_id"
+    t.index ["target_type", "target_id"], name: "index_activity_streams_on_target"
   end
 
   create_table "agenda_items", force: :cascade do |t|
@@ -26,6 +29,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_15_182853) do
     t.date "due_date"
     t.string "icon_name", default: "ClipboardList", null: false
     t.integer "editor_id"
+    t.string "link"
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.index ["editor_id"], name: "index_agenda_items_on_editor_id"
   end
 
@@ -95,7 +101,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_15_182853) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
-  add_foreign_key "activity_streams", "users"
+  add_foreign_key "activity_streams", "users", column: "actor_id"
   add_foreign_key "agenda_items", "users", column: "editor_id"
   add_foreign_key "feedback_requests", "users", column: "requester_id"
   add_foreign_key "feedback_submission_likes", "feedback_submissions"

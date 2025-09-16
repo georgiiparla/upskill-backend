@@ -76,8 +76,18 @@ class ApplicationController < Sinatra::Base
       $expiration_lock.synchronize do
         if Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
           logger.info "Running job to close expired requests..."
-          count = FeedbackRequest.where(status: 'pending').where('expires_at < ?', Time.now).update_all(status: 'closed')
-          logger.info "Closed #{count} expired request(s)." if count > 0
+          
+          expired_requests = FeedbackRequest.where(status: 'pending').where('expires_at < ?', Time.now)
+          
+          if expired_requests.any?
+            expired_requests.each do |req|
+              ActivityStream.create(actor: nil, event_type: 'feedback_closed', target: req)
+            end
+            
+            count = expired_requests.update_all(status: 'closed')
+            logger.info "Closed #{count} expired request(s)."
+          end
+          
           $last_expiration_run = Time.now
         end
       end
