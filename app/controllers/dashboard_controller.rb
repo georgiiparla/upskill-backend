@@ -10,7 +10,7 @@ class DashboardController < ApplicationController
 
     activity_stream = ActivityStream.includes(:actor, :target).order(created_at: :desc).limit(5)
     
-    activity_json = activity_stream.map do |activity|
+    activity_json = activity_stream.select { |a| a.target.present? }.map do |activity|
       target_info = case activity.target_type
                     when 'FeedbackRequest'
                       { type: 'feedback_request', title: activity.target.topic, tag: activity.target.tag }
