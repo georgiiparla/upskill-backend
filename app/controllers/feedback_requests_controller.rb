@@ -29,7 +29,6 @@ class FeedbackRequestsController < ApplicationController
   post '/' do
     protected!
     
-    # Add 'visibility' to the allowed parameters
     request_params = @request_payload.slice('topic', 'details', 'tag', 'visibility')
     feedback_request = current_user.feedback_requests.build(request_params)
 
@@ -110,6 +109,30 @@ class FeedbackRequestsController < ApplicationController
     else
       status 422
       json({ errors: feedback_request.errors.full_messages.presence || "Invalid status provided." })
+    end
+  end
+
+  patch '/:id/visibility' do
+    protected!
+
+    feedback_request = FeedbackRequest.find_by(id: params['id'])
+    halt 404, json({ error: "Feedback request not found." }) unless feedback_request
+
+    if feedback_request.requester_id != current_user.id
+      halt 403, json({ error: "You are not authorized to change this request's visibility." })
+    end
+
+    new_visibility = @request_payload['visibility']
+    feedback_request.visibility = new_visibility
+
+    if feedback_request.save
+      json feedback_request.as_json.merge(
+        requester_username: feedback_request.requester.username,
+        isOwner: true
+      )
+    else
+      status 422
+      json({ errors: feedback_request.errors.full_messages })
     end
   end
 
