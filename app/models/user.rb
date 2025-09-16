@@ -6,7 +6,9 @@ class User < ActiveRecord::Base
   validates :username, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   
-  has_many :activity_streams, dependent: :destroy
+  # Update this line to specify the new foreign key
+  has_many :activity_streams, foreign_key: 'actor_id', dependent: :destroy 
+  
   has_many :feedback_submissions, dependent: :destroy 
   has_many :feedback_requests, foreign_key: 'requester_id', dependent: :destroy 
   has_one :leaderboard, dependent: :destroy

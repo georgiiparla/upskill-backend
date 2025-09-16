@@ -2,7 +2,8 @@ puts "Seeding database with mock data..."
 
 ActiveRecord::Base.transaction do
   puts "   - Deleting old data..."
-  [FeedbackSubmission, FeedbackRequest, ActivityStream, Leaderboard, Quest, AgendaItem, Meeting, User].each(&:destroy_all)
+  # ActivityStream is now first to avoid foreign key issues on deletion
+  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, Meeting, User].each(&:destroy_all)
 
   puts "   - Creating mock users..."
   users = {}
@@ -13,7 +14,6 @@ ActiveRecord::Base.transaction do
   users[:jamie]  = User.create!(username: 'Mock User Jamie',  email: 'jamie@example.com',  password: 'password123')
   users[:morgan] = User.create!(username: 'Mock User Morgan', email: 'morgan@example.com', password: 'password123')
 
-  # --- (Quests, Feedback Requests, Submissions, Leaderboard sections are unchanged) ---
   puts "   - Creating mock quests..."
   Quest.create!([
     { title: '[MOCK] Adaptability Ace', description: '[MOCK] Complete the "Handling Change" module and score 90% on the quiz.', points: 150, progress: 100, completed: true },
@@ -82,21 +82,39 @@ ActiveRecord::Base.transaction do
 
 
   puts "   - Creating mock dashboard items..."
-
   AgendaItem.create!([
-    { type: 'article', title: '[MOCK] The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex] },
+    { type: 'article', title: '[MOCK] The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
     { type: 'meeting', title: '[MOCK] Q3 Project Kickoff', category: 'Planning', due_date: '2025-08-19', editor: users[:casey] },
     { type: 'article', title: '[MOCK] Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] }
   ])
-  
-  ActivityStream.create!([
-    { user: users[:casey], action: 'completed the quest "[MOCK] Teamwork Titan".', created_at: Time.now - 5.minutes },
-    { user: users[:alex], action: 'provided feedback on the "[MOCK] Q3 Marketing Plan".', created_at: Time.now - 2.hours },
-    { user: users[:taylor], action: 'updated the status of task "[MOCK] Deploy Staging Server".', created_at: Time.now - 1.day },
-    { user: users[:jamie], action: 'read the article "[MOCK] Leading Without Authority".', created_at: Time.now - 1.day },
-    { user: users[:jordan], action: 'RSVP\'d to "[MOCK] Q3 Project Kickoff".', created_at: Time.now - 2.days }
-  ])
 
+  puts "   - Creating new, structured mock activity stream..."
+  
+  # Event 1: A user requests feedback
+  ActivityStream.create!(
+    actor: users[:alex],
+    target: request1,
+    event_type: 'feedback_requested',
+    created_at: request1.created_at
+  )
+
+  # Event 2: A request is closed by the system (actor is nil)
+  ActivityStream.create!(
+    actor: nil,
+    target: request3,
+    event_type: 'feedback_closed',
+    created_at: request3.updated_at
+  )
+
+  # Event 3: A user updates an agenda item
+  agenda_item = AgendaItem.find_by!(title: '[MOCK] Q3 Project Kickoff')
+  ActivityStream.create!(
+    actor: users[:casey],
+    target: agenda_item,
+    event_type: 'agenda_updated',
+    created_at: Time.now - 1.hour
+  )
+  
   Meeting.create!([
     { title: '[MOCK] Q3 Project Kickoff', meeting_date: '2025-08-19', status: 'Upcoming' },
     { title: '[MOCK] Weekly Sync: Sprint 14', meeting_date: '2025-08-12', status: 'Complete' },
