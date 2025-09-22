@@ -3,7 +3,6 @@ require 'google/api_client/client_secrets'
 
 class AuthController < ApplicationController
 
-  # This is the new endpoint our frontend will link to.
   # It generates the Google sign-in URL and redirects the user there.
   get '/google/login' do
     client_secrets = Google::APIClient::ClientSecrets.new(
@@ -50,26 +49,38 @@ class AuthController < ApplicationController
     oauth2_service.authorization = authorizer
     user_info = oauth2_service.get_userinfo
 
-    unless User.is_email_authorized?(user_info.email)
-      redirect "#{ENV['FRONTEND_URL']}/login?error=unauthorized_email"
-      return
+    user = nil
+    login_email = user_info.email.downcase
+
+    # 1. Check if the email matches a primary user account
+    user = User.find_by('lower(email) = ?', login_email)
+
+    # 2. If not found, check if it matches an alias
+    if user.nil?
+      alias_entry = UserEmailAlias.find_by('lower(email) = ?', login_email)
+      user = alias_entry.user if alias_entry
     end
 
-    # Find or Create User (same logic as before)
-    user = User.find_by(email: user_info.email)
-    unless user
-      user = User.new(
-        email: user_info.email,
-        username: user_info.name,
-        password: SecureRandom.hex(16)
-      )
-      unless user.save
-        redirect "#{ENV['FRONTEND_URL']}/login?error=account_creation_failed"
+    # 3. If still no user, check if this email is authorized to create a NEW account
+    if user.nil?
+      if User.is_creation_authorized?(login_email)
+        user = User.new(
+          email: user_info.email, # Store with original casing
+          username: user_info.name,
+          password: SecureRandom.hex(16)
+        )
+        unless user.save
+          redirect "#{ENV['FRONTEND_URL']}/login?error=account_creation_failed"
+          return
+        end
+      else
+        # If not found and not authorized to create, it's an unauthorized email.
+        redirect "#{ENV['FRONTEND_URL']}/login?error=unauthorized_email"
         return
       end
     end
 
-    # Generate JWT and redirect to frontend
+    # Generate JWT for the found/created user and redirect
     token = encode_token({ user_id: user.id })
     redirect "#{ENV['FRONTEND_URL']}/auth/callback?token=#{token}"
   end
