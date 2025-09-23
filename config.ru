@@ -28,4 +28,5 @@ run Rack::Builder.new {
   map('/leaderboard') { run LeaderboardController }
   map('/admin') { run AdminController }
   map('/agenda_items') { run AgendaItemsController }
+  map('/me/aliases') { run UserAliasesController }
 }

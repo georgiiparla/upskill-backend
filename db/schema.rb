@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_16_133316) do
+ActiveRecord::Schema[7.2].define(version: 2025_09_22_125940) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -93,6 +93,15 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_16_133316) do
     t.boolean "completed", default: false
   end
 
+  create_table "user_email_aliases", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "email", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower(email)", name: "index_user_email_aliases_on_lower_email", unique: true
+    t.index ["user_id"], name: "index_user_email_aliases_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "username", null: false
     t.string "email", null: false
@@ -110,4 +119,5 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_16_133316) do
   add_foreign_key "feedback_submissions", "feedback_requests"
   add_foreign_key "feedback_submissions", "users"
   add_foreign_key "leaderboards", "users"
+  add_foreign_key "user_email_aliases", "users"
 end
