@@ -45,20 +45,14 @@ class ApplicationController < Sinatra::Base
           nil
         end
       end
-
     end
 
     def current_user
       if decoded_token
         user_id = decoded_token[0]['user_id']
-        user = User.find_by(id: user_id)
         
-        if user && !user.authorized?
-          # If the user is no longer authorized, treat them as logged out.
-          return nil 
-        end
+        @current_user ||= User.find_by(id: user_id)
 
-        @current_user ||= user
         settings.logger.info "User found via JWT: #{@current_user ? "Yes, ID: #{@current_user.id}" : 'No'}"
       end
 
@@ -93,8 +87,6 @@ class ApplicationController < Sinatra::Base
       end
     end
 
-
-
     @request_payload = {}
     body = request.body.read
     if !body.empty? && request.content_type&.include?("application/json")
@@ -104,6 +96,5 @@ class ApplicationController < Sinatra::Base
         halt 400, json({ error: 'Invalid JSON in request body' })
       end
     end
-    
   end
 end
