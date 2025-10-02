@@ -8,7 +8,7 @@ class DashboardController < ApplicationController
       item.as_json.merge(editor_username: item.editor&.username)
     end
 
-    activity_stream = ActivityStream.includes(:actor, :target).order(created_at: :desc).limit(5)
+    activity_stream = ActivityStream.includes(:actor, :target).order(created_at: :desc).limit(25)
     
     activity_json = activity_stream.select { |a| a.target.present? }.map do |activity|
       target_info = case activity.target_type
