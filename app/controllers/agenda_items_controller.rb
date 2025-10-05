@@ -1,3 +1,5 @@
+require_relative '../helpers/quest_updater'
+
 class AgendaItemsController < ApplicationController
   
   VALID_ICONS = ['ClipboardList', 'BookOpen', 'FileText', 'MessageSquare', 'Lightbulb']
@@ -30,6 +32,7 @@ class AgendaItemsController < ApplicationController
 
     if agenda_item.update(update_params)
       ActivityStream.create(actor: current_user, event_type: 'agenda_updated', target: agenda_item)
+      QuestUpdater.complete_for(current_user, 'update_agenda')
       
       json agenda_item.as_json.merge(
         editor_username: agenda_item.editor&.username

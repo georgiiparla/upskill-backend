@@ -1,3 +1,5 @@
+require_relative '../helpers/quest_updater'
+
 class FeedbackSubmissionsController < ApplicationController
   get '/' do
     protected!
@@ -30,10 +32,11 @@ class FeedbackSubmissionsController < ApplicationController
       feedback_request: feedback_request,
       content: @request_payload['content'],
       sentiment: @request_payload['sentiment'].to_i,
-      subject: "Re: #{feedback_request.topic}"
+      subject: feedback_request.topic
     )
 
     if submission.save
+      QuestUpdater.complete_for(current_user, 'give_feedback')
       status 201
       json submission.as_json.merge(authorName: current_user.username)
     else
@@ -64,8 +67,10 @@ class FeedbackSubmissionsController < ApplicationController
     submission = FeedbackSubmission.find_by(id: params['id'])
     halt 404, json({ error: 'Submission not found.' }) unless submission
 
+
     like = submission.feedback_submission_likes.new(user: current_user)
     if like.save
+      QuestUpdater.complete_for(current_user, 'like_feedback') unless submission.user_id == current_user.id
       status 201
       json({ message: 'Liked successfully.' })
     else

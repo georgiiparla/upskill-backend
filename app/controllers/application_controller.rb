@@ -9,8 +9,13 @@ require_relative '../../config/app_config'
 
 Dir["./app/models/*.rb"].each { |file| require file }
 
+# Global state for traffic-based job scheduling
 $last_expiration_run ||= Time.now - 1.year
+$last_quest_reset_run ||= Time.now - 1.year
+$last_leaderboard_reset_run ||= Time.now - 1.year
 $expiration_lock ||= Mutex.new
+$quest_reset_lock ||= Mutex.new
+$leaderboard_reset_lock ||= Mutex.new
 
 class ApplicationController < Sinatra::Base
 
@@ -62,13 +67,15 @@ class ApplicationController < Sinatra::Base
     def protected!
       halt 401, json({ error: 'Unauthorized' }) unless current_user
     end
-  end
 
-  before do
-    # This acts as a simple, traffic-based cron job.
-    if Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+    # Traffic-based job: Close expired feedback requests
+    def run_feedback_expiration_job
+      return unless Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+      
       $expiration_lock.synchronize do
-        if Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+        return unless Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+        
+        begin
           logger.info "Running job to close expired requests..."
           
           expired_requests = FeedbackRequest.where(status: 'pending').where('expires_at < ?', Time.now)
@@ -81,11 +88,61 @@ class ApplicationController < Sinatra::Base
             count = expired_requests.update_all(status: 'closed')
             logger.info "Closed #{count} expired request(s)."
           end
-          
+        rescue => e
+          logger.error "Expiration job failed: #{e.message}"
+        ensure
           $last_expiration_run = Time.now
         end
       end
     end
+
+    # Traffic-based job: Reset quest progress weekly
+    def run_quest_reset_job
+      return unless Time.now > $last_quest_reset_run + AppConfig::QUEST_RESET_FREQUENCY.seconds
+      
+      $quest_reset_lock.synchronize do
+        return unless Time.now > $last_quest_reset_run + AppConfig::QUEST_RESET_FREQUENCY.seconds
+        
+        begin
+          logger.info "Running weekly quest reset job..."
+          
+          # Reset completed flag and progress for all user quests
+          reset_count = UserQuest.where(completed: true).update_all(completed: false, progress: 0)
+          logger.info "Reset #{reset_count} completed quest(s)."
+        rescue => e
+          logger.error "Quest reset job failed: #{e.message}"
+        ensure
+          $last_quest_reset_run = Time.now
+        end
+      end
+    end
+
+    # Traffic-based job: Reset leaderboard points monthly
+    def run_leaderboard_reset_job
+      return unless Time.now > $last_leaderboard_reset_run + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds
+      
+      $leaderboard_reset_lock.synchronize do
+        return unless Time.now > $last_leaderboard_reset_run + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds
+        
+        begin
+          logger.info "Running monthly leaderboard reset job..."
+          
+          reset_count = Leaderboard.update_all(points: 0)
+          logger.info "Reset points for #{reset_count} user(s) in leaderboard."
+        rescue => e
+          logger.error "Leaderboard reset job failed: #{e.message}"
+        ensure
+          $last_leaderboard_reset_run = Time.now
+        end
+      end
+    end
+  end
+
+  before do
+    # Traffic-based cron jobs - run on every request if enough time has passed
+    run_feedback_expiration_job
+    run_quest_reset_job
+    run_leaderboard_reset_job
 
     @request_payload = {}
     body = request.body.read

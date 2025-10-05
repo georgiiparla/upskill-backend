@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_09_22_125940) do
+ActiveRecord::Schema[7.2].define(version: 2025_10_05_003900) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -91,6 +91,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_22_125940) do
     t.integer "points"
     t.integer "progress"
     t.boolean "completed", default: false
+    t.string "code"
+    t.index ["code"], name: "index_quests_on_code", unique: true
   end
 
   create_table "user_email_aliases", force: :cascade do |t|
@@ -100,6 +102,18 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_22_125940) do
     t.datetime "updated_at", null: false
     t.index "lower(email)", name: "index_user_email_aliases_on_lower_email", unique: true
     t.index ["user_id"], name: "index_user_email_aliases_on_user_id"
+  end
+
+  create_table "user_quests", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "quest_id", null: false
+    t.integer "progress", default: 0, null: false
+    t.boolean "completed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["quest_id"], name: "index_user_quests_on_quest_id"
+    t.index ["user_id", "quest_id"], name: "index_user_quests_on_user_id_and_quest_id", unique: true
+    t.index ["user_id"], name: "index_user_quests_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -120,4 +134,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_09_22_125940) do
   add_foreign_key "feedback_submissions", "users"
   add_foreign_key "leaderboards", "users"
   add_foreign_key "user_email_aliases", "users"
+  add_foreign_key "user_quests", "quests"
+  add_foreign_key "user_quests", "users"
 end
