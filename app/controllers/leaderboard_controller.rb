@@ -11,7 +11,7 @@ class LeaderboardController < ApplicationController
     protected!
 
     entry = current_user.leaderboard || current_user.create_leaderboard(points: 0, badges: nil)
-    all_entries = Leaderboard.order(points: :desc, updated_at: :asc).pluck(:user_id)
+    all_entries = Leaderboard.order(points: :desc, user_id: :asc).pluck(:user_id)
     rank = all_entries.index(current_user.id)&.+(1)
 
     json({
