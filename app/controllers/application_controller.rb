@@ -4,18 +4,11 @@ require 'sinatra/activerecord'
 require 'bcrypt'
 require 'logger'
 require 'jwt'
+require 'time'
 
 require_relative '../../config/app_config'
 
 Dir["./app/models/*.rb"].each { |file| require file }
-
-# Global state for traffic-based job scheduling
-$last_expiration_run ||= Time.now - 1.year
-$last_quest_reset_run ||= Time.now - 1.year
-$last_leaderboard_reset_run ||= Time.now - 1.year
-$expiration_lock ||= Mutex.new
-$quest_reset_lock ||= Mutex.new
-$leaderboard_reset_lock ||= Mutex.new
 
 class ApplicationController < Sinatra::Base
 
@@ -68,71 +61,99 @@ class ApplicationController < Sinatra::Base
       halt 401, json({ error: 'Unauthorized' }) unless current_user
     end
 
-    # Traffic-based job: Close expired feedback requests
-    def run_feedback_expiration_job
-      return unless Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
-      
-      $expiration_lock.synchronize do
-        return unless Time.now > $last_expiration_run + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
-        
+    # Safer find-or-create for SystemSetting to avoid a race where two
+    # processes try to create the same key concurrently (Postgres / Supabase).
+    def find_or_create_system_setting_safely(key)
+      rec = SystemSetting.find_by(key: key)
+      unless rec
         begin
-          logger.info "Running job to close expired requests..."
-          
+          rec = SystemSetting.create!(key: key, value: (Time.now - 1.year).utc.iso8601)
+        rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+          # concurrent creator; fetch the existing record
+          rec = SystemSetting.find_by(key: key)
+        end
+      end
+      rec
+    end
+
+    # Traffic-based job: Close expired feedback requests (DB-backed coordination)
+    def run_feedback_expiration_job
+      key = 'last_expiration_run'
+
+      SystemSetting.transaction do
+        # create the setting safely if missing, then acquire FOR UPDATE on the row
+        rec = find_or_create_system_setting_safely(key)
+        rec = SystemSetting.lock.find_by(id: rec.id)
+        last = (Time.parse(rec.value) rescue Time.now - 1.year)
+        return unless Time.now > last + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+
+        begin
+          settings.logger.info "Running job to close expired requests..."
+
           expired_requests = FeedbackRequest.where(status: 'pending').where('expires_at < ?', Time.now)
-          
+
           if expired_requests.any?
             expired_requests.each do |req|
               ActivityStream.create(actor: nil, event_type: 'feedback_closed', target: req)
             end
-            
+
             count = expired_requests.update_all(status: 'closed')
-            logger.info "Closed #{count} expired request(s)."
+            settings.logger.info "Closed #{count} expired request(s)."
           end
+
+          # update last-run only on success
+          rec.update!(value: Time.now.utc.iso8601)
         rescue => e
-          logger.error "Expiration job failed: #{e.message}"
-        ensure
-          $last_expiration_run = Time.now
+          settings.logger.error "Expiration job failed: #{e.message}"
+          raise ActiveRecord::Rollback
         end
       end
     end
 
-    # Traffic-based job: Reset quest progress weekly
+    # Traffic-based job: Reset quest progress weekly (DB-backed coordination)
     def run_quest_reset_job
-      return unless Time.now > $last_quest_reset_run + AppConfig::QUEST_RESET_FREQUENCY.seconds
-      
-      $quest_reset_lock.synchronize do
-        return unless Time.now > $last_quest_reset_run + AppConfig::QUEST_RESET_FREQUENCY.seconds
-        
+      key = 'last_quest_reset_run'
+
+      SystemSetting.transaction do
+        rec = find_or_create_system_setting_safely(key)
+        rec = SystemSetting.lock.find_by(id: rec.id)
+        last = (Time.parse(rec.value) rescue Time.now - 1.year)
+        return unless Time.now > last + AppConfig::QUEST_RESET_FREQUENCY.seconds
+
         begin
-          logger.info "Running weekly quest reset job..."
-          
-          # Reset completed flag and progress for all user quests
+          settings.logger.info "Running weekly quest reset job..."
+
           reset_count = UserQuest.where(completed: true).update_all(completed: false, progress: 0)
-          logger.info "Reset #{reset_count} completed quest(s)."
+          settings.logger.info "Reset #{reset_count} completed quest(s)."
+
+          rec.update!(value: Time.now.utc.iso8601)
         rescue => e
-          logger.error "Quest reset job failed: #{e.message}"
-        ensure
-          $last_quest_reset_run = Time.now
+          settings.logger.error "Quest reset job failed: #{e.message}"
+          raise ActiveRecord::Rollback
         end
       end
     end
 
-    # Traffic-based job: Reset leaderboard points monthly
+    # Traffic-based job: Reset leaderboard points monthly (DB-backed coordination)
     def run_leaderboard_reset_job
-      return unless Time.now > $last_leaderboard_reset_run + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds
-      
-      $leaderboard_reset_lock.synchronize do
-        return unless Time.now > $last_leaderboard_reset_run + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds
-        
+      key = 'last_leaderboard_reset_run'
+
+      SystemSetting.transaction do
+        rec = find_or_create_system_setting_safely(key)
+        rec = SystemSetting.lock.find_by(id: rec.id)
+        last = (Time.parse(rec.value) rescue Time.now - 1.year)
+        return unless Time.now > last + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds
+
         begin
-          logger.info "Running monthly leaderboard reset job..."
-          
+          settings.logger.info "Running monthly leaderboard reset job..."
+
           reset_count = Leaderboard.update_all(points: 0)
-          logger.info "Reset points for #{reset_count} user(s) in leaderboard."
+          settings.logger.info "Reset points for #{reset_count} user(s) in leaderboard."
+
+          rec.update!(value: Time.now.utc.iso8601)
         rescue => e
-          logger.error "Leaderboard reset job failed: #{e.message}"
-        ensure
-          $last_leaderboard_reset_run = Time.now
+          settings.logger.error "Leaderboard reset job failed: #{e.message}"
+          raise ActiveRecord::Rollback
         end
       end
     end

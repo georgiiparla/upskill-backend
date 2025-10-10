@@ -2,7 +2,7 @@ puts "Seeding database with mock data..."
 
 ActiveRecord::Base.transaction do
   puts "   - Deleting old data..."
-  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, Meeting, User].each(&:destroy_all)
+  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, User].each(&:destroy_all)
 
   puts "   - Creating mock users..."
   users = {}
@@ -88,7 +88,7 @@ ActiveRecord::Base.transaction do
   puts "   - Creating mock dashboard items..."
   AgendaItem.create!([
     { type: 'article', title: 'The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
-    { type: 'meeting', title: 'Q3 Project Kickoff', category: 'Planning', due_date: '2025-08-19', editor: users[:casey] },
+    { type: 'article', title: 'My Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
     { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] }
   ])
 
@@ -108,19 +108,14 @@ ActiveRecord::Base.transaction do
     created_at: request3.updated_at
   )
 
-  agenda_item = AgendaItem.find_by!(title: 'Q3 Project Kickoff')
+  agenda_item = AgendaItem.find_by!(title: 'My Feedback')
   ActivityStream.create!(
     actor: users[:casey],
     target: agenda_item,
     event_type: 'agenda_updated',
     created_at: Time.now - 1.hour
   )
-  
-  Meeting.create!([
-    { title: 'Q3 Project Kickoff', meeting_date: '2025-08-19', status: 'Upcoming' },
-    { title: 'Weekly Sync: Sprint 14', meeting_date: '2025-08-12', status: 'Complete' },
-    { title: 'Design Review: New Feature', meeting_date: '2025-08-11', status: 'Complete' }
-  ])
+
 end
 
 puts "Seeding complete."

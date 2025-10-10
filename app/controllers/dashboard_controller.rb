@@ -1,8 +1,7 @@
 class DashboardController < ApplicationController
   get '/' do
     protected!
-    agenda_items = AgendaItem.includes(:editor).order(due_date: :asc)
-    meetings = Meeting.order(meeting_date: :desc)
+  agenda_items = AgendaItem.includes(:editor).order(due_date: :asc)
 
     agenda_items_json = agenda_items.map do |item|
       item.as_json.merge(editor_username: item.editor&.username)
@@ -55,7 +54,6 @@ class DashboardController < ApplicationController
     json({ 
       agendaItems: agenda_items_json, 
       activityStream: activity_json, 
-      meetings: meetings, 
       activityData: activity_data 
     })
   end

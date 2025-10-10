@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_10_05_003900) do
+ActiveRecord::Schema[7.2].define(version: 2025_10_10_121500) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -79,12 +79,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_05_003900) do
     t.index ["user_id"], name: "index_leaderboards_on_user_id"
   end
 
-  create_table "meetings", force: :cascade do |t|
-    t.string "title"
-    t.date "meeting_date"
-    t.string "status"
-  end
-
   create_table "quests", force: :cascade do |t|
     t.string "title", null: false
     t.text "description"
@@ -93,6 +87,14 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_05_003900) do
     t.boolean "completed", default: false
     t.string "code"
     t.index ["code"], name: "index_quests_on_code", unique: true
+  end
+
+  create_table "system_settings", force: :cascade do |t|
+    t.string "key", null: false
+    t.text "value"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_system_settings_on_key", unique: true
   end
 
   create_table "user_email_aliases", force: :cascade do |t|
