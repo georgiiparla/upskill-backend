@@ -15,10 +15,10 @@ ActiveRecord::Base.transaction do
 
   puts "   - Creating mock quests..."
   Quest.create!([
-    { code: 'create_feedback_request', title: 'First Feedback Request', description: 'Create your first feedback request', points: 50, progress: 0, completed: false },
-    { code: 'give_feedback',          title: 'Give Feedback',            description: 'Submit feedback to a colleague',        points: 50, progress: 0, completed: false },
-    { code: 'update_agenda',          title: 'Update Weekly Agenda',     description: 'Update the weekly agenda item',        points: 50, progress: 0, completed: false },
-    { code: 'like_feedback',          title: 'Spread the Love',          description: "Like someone else's feedback",        points: 50, progress: 0, completed: false }
+    { code: 'create_feedback_request', title: 'First Feedback Request', description: 'Create your first feedback request', points: 50 },
+    { code: 'give_feedback',          title: 'Give Feedback',            description: 'Submit feedback to a colleague',        points: 50 },
+    { code: 'update_agenda',          title: 'Update Weekly Agenda',     description: 'Update the weekly agenda item',        points: 50 },
+    { code: 'like_feedback',          title: 'Spread the Love',          description: "Like someone else's feedback",        points: 50 }
   ])
 
   # Create progression records for existing users (created above)
