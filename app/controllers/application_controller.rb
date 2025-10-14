@@ -19,9 +19,26 @@ class ApplicationController < Sinatra::Base
     logger.level = Logger::DEBUG
     set :logger, logger
     use Rack::CommonLogger, logger
+    
+    # In-memory cache for job check throttling (reduces DB queries)
+    set :job_check_cache, {}
+    set :job_check_cache_ttl, 300 # seconds
   end
   
   helpers do
+
+    # Check if enough time has passed since last check (in-memory cache to reduce DB queries)
+    def should_check_job?(job_key)
+      cache = settings.job_check_cache
+      last_check = cache[job_key]
+      
+      if last_check.nil? || (Time.now - last_check) > settings.job_check_cache_ttl
+        cache[job_key] = Time.now
+        true
+      else
+        false
+      end
+    end
 
     def jwt_secret
       ENV['JWT_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393'
@@ -78,6 +95,8 @@ class ApplicationController < Sinatra::Base
 
     # Traffic-based job: Close expired feedback requests (DB-backed coordination)
     def run_feedback_expiration_job
+      return unless should_check_job?('expiration_job')
+      
       key = 'last_expiration_run'
 
       SystemSetting.transaction do
@@ -112,6 +131,8 @@ class ApplicationController < Sinatra::Base
 
     # Traffic-based job: Reset quest progress weekly (DB-backed coordination)
     def run_quest_reset_job
+      return unless should_check_job?('quest_reset_job')
+      
       key = 'last_quest_reset_run'
 
       SystemSetting.transaction do
@@ -136,6 +157,8 @@ class ApplicationController < Sinatra::Base
 
     # Traffic-based job: Reset leaderboard points monthly (DB-backed coordination)
     def run_leaderboard_reset_job
+      return unless should_check_job?('leaderboard_reset_job')
+      
       key = 'last_leaderboard_reset_run'
 
       SystemSetting.transaction do
