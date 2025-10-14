@@ -1,4 +1,5 @@
 require_relative '../helpers/anonymizer'
+require_relative '../helpers/quest_updater'
 
 class FeedbackRequestsController < ApplicationController
   get '/' do
@@ -34,6 +35,7 @@ class FeedbackRequestsController < ApplicationController
 
     if feedback_request.save
       ActivityStream.create(actor: current_user, event_type: 'feedback_requested', target: feedback_request)
+      QuestUpdater.complete_for(current_user, 'create_feedback_request')
       status 201
       json feedback_request.as_json.merge(
         requester_username: current_user.username,

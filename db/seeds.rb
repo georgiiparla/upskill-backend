@@ -2,7 +2,7 @@ puts "Seeding database with mock data..."
 
 ActiveRecord::Base.transaction do
   puts "   - Deleting old data..."
-  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, Meeting, User].each(&:destroy_all)
+  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, User].each(&:destroy_all)
 
   puts "   - Creating mock users..."
   users = {}
@@ -15,23 +15,26 @@ ActiveRecord::Base.transaction do
 
   puts "   - Creating mock quests..."
   Quest.create!([
-    { title: '[MOCK] Adaptability Ace', description: '[MOCK] Complete the "Handling Change" module and score 90% on the quiz.', points: 150, progress: 100, completed: true },
-    { title: '[MOCK] Communication Pro', description: '[MOCK] Provide constructive feedback on 5 different project documents.', points: 200, progress: 60, completed: false },
-    { title: '[MOCK] Leadership Leap', description: '[MOCK] Lead a project planning session and submit the meeting notes.', points: 250, progress: 0, completed: false },
-    { title: '[MOCK] Teamwork Titan', description: '[MOCK] Successfully complete a paired programming challenge.', points: 100, progress: 100, completed: true }
+    { code: 'create_feedback_request', title: 'First Feedback Request', description: 'Create your first feedback request', points: 50, progress: 0, completed: false },
+    { code: 'give_feedback',          title: 'Give Feedback',            description: 'Submit feedback to a colleague',        points: 50, progress: 0, completed: false },
+    { code: 'update_agenda',          title: 'Update Weekly Agenda',     description: 'Update the weekly agenda item',        points: 50, progress: 0, completed: false },
+    { code: 'like_feedback',          title: 'Spread the Love',          description: "Like someone else's feedback",        points: 50, progress: 0, completed: false }
   ])
+
+  # Create progression records for existing users (created above)
+  User.find_each { |u| u.send(:initialize_progression) }
 
   puts "   - Creating mock feedback requests..."
   request1 = users[:alex].feedback_requests.create!(
-    topic: "[MOCK] Review my Q4 strategy presentation deck",
-    details: "[MOCK] I'm specifically looking for feedback on slides 3-5 regarding market analysis. Is the data clear enough?",
+    topic: "Review my Q4 strategy presentation deck",
+    details: "I'm specifically looking for feedback on slides 3-5 regarding market analysis. Is the data clear enough?",
     tag: "strategyReviewMockTag123",
     visibility: 'public'
   )
 
   request2 = users[:casey].feedback_requests.create!(
-    topic: "[MOCK] Code review for new API endpoint",
-    details: "[MOCK] Before I merge this branch, can someone check the error handling logic in `auth_controller.rb`?",
+    topic: "Code review for new API endpoint",
+    details: "Before I merge this branch, can someone check the error handling logic in `auth_controller.rb`?",
     tag: "apiRefactorMockTag456",
     visibility: 'requester_only'
   )
@@ -41,8 +44,8 @@ ActiveRecord::Base.transaction do
   request2.update_column(:expires_at, future_expiry)
   
   request3 = users[:jordan].feedback_requests.create!(
-    topic: "[MOCK] Thoughts on the new onboarding doc?",
-    details: "[MOCK] This is a draft of the new onboarding document for junior developers. Is it clear and comprehensive?",
+    topic: "Thoughts on the new onboarding doc?",
+    details: "This is a draft of the new onboarding document for junior developers. Is it clear and comprehensive?",
     tag: "onboardingDocMockTag789",
     status: 'closed'
   )
@@ -52,41 +55,41 @@ ActiveRecord::Base.transaction do
   puts "   - Creating mock feedback submissions..."
   users[:taylor].feedback_submissions.create!(
     feedback_request: request1,
-    subject: "Re: [MOCK] Q4 Strategy Deck",
+    subject: "Q4 Strategy Deck",
     content: "Slides 3 and 4 are solid. Slide 5's graph is a bit confusing; maybe try a bar chart instead of a pie chart?",
     sentiment: 2
   )
 
   users[:alex].feedback_submissions.create!(
     feedback_request: request2,
-    subject: "Re: [MOCK] API Endpoint Review",
+    subject: "API Endpoint Review",
     content: "Looks good overall. I added one suggestion to handle nil inputs to prevent a potential 500 error.",
     sentiment: 3
   )
 
   users[:casey].feedback_submissions.create!(
     feedback_request: request3,
-    subject: "Re: [MOCK] Onboarding Doc",
+    subject: "Onboarding Doc",
     content: "This looks fantastic! It's much clearer than the old one. I'd just add a link to the dev environment setup guide.",
     sentiment: 3
   )
 
   puts "   - Creating mock leaderboard..."
   Leaderboard.create!([
-    { user: users[:alex],   points: 4250, badges: '🚀,🎯,🔥' },
-    { user: users[:casey],  points: 3980, badges: '💡,🎯' },
-    { user: users[:taylor], points: 3710, badges: '🤝' },
-    { user: users[:jordan], points: 3500, badges: '🚀' },
-    { user: users[:jamie],  points: 3200, badges: '💡,🤝' },
-    { user: users[:morgan], points: 2950, badges: '🎯' }
+    { user: users[:alex],   points: 0, badges: nil },
+    { user: users[:casey],  points: 0, badges: nil },
+    { user: users[:taylor], points: 0, badges: nil },
+    { user: users[:jordan], points: 0, badges: nil },
+    { user: users[:jamie],  points: 0, badges: nil },
+    { user: users[:morgan], points: 0, badges: nil }
   ])
 
 
   puts "   - Creating mock dashboard items..."
   AgendaItem.create!([
-    { type: 'article', title: '[MOCK] The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
-    { type: 'meeting', title: '[MOCK] Q3 Project Kickoff', category: 'Planning', due_date: '2025-08-19', editor: users[:casey] },
-    { type: 'article', title: '[MOCK] Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] }
+    { type: 'article', title: 'The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
+    { type: 'article', title: 'My Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
+    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] }
   ])
 
   puts "   - Creating new, structured mock activity stream..."
@@ -105,19 +108,14 @@ ActiveRecord::Base.transaction do
     created_at: request3.updated_at
   )
 
-  agenda_item = AgendaItem.find_by!(title: '[MOCK] Q3 Project Kickoff')
+  agenda_item = AgendaItem.find_by!(title: 'My Feedback')
   ActivityStream.create!(
     actor: users[:casey],
     target: agenda_item,
     event_type: 'agenda_updated',
     created_at: Time.now - 1.hour
   )
-  
-  Meeting.create!([
-    { title: '[MOCK] Q3 Project Kickoff', meeting_date: '2025-08-19', status: 'Upcoming' },
-    { title: '[MOCK] Weekly Sync: Sprint 14', meeting_date: '2025-08-12', status: 'Complete' },
-    { title: '[MOCK] Design Review: New Feature', meeting_date: '2025-08-11', status: 'Complete' }
-  ])
+
 end
 
 puts "Seeding complete."
