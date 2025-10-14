@@ -7,9 +7,9 @@ class FeedbackSubmission < ActiveRecord::Base
 
   SENTIMENT_MAP = {
     1 => 'Below Expectations',
-    2 => 'Meets Expectations',
-    3 => 'Exceeds Expectations',
-    4 => 'Far Exceeds Expectations'
+    2 => 'Approaching Expectations',
+    3 => 'Meets Expectations',
+    4 => 'Exceeds Expectations'
   }.freeze
 
   def sentiment_text
