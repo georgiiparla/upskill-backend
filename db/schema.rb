@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
+ActiveRecord::Schema[7.2].define(version: 2025_10_26_090000) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -84,7 +84,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
     t.text "description"
     t.integer "points"
     t.string "code"
+    t.boolean "explicit", default: true, null: false
     t.index ["code"], name: "index_quests_on_code", unique: true
+    t.index ["explicit"], name: "index_quests_on_explicit"
   end
 
   create_table "system_settings", force: :cascade do |t|
