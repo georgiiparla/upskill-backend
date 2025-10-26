@@ -15,4 +15,22 @@ class QuestsController < ApplicationController
 
     json quests_payload
   end
+
+  post '/' do
+    protected!
+
+    begin
+      q = Quest.create!(
+        code: @request_payload['code'],
+        title: @request_payload['title'],
+        description: @request_payload['description'],
+        points: @request_payload['points']
+      )
+      status 201
+      json q
+    rescue ActiveRecord::RecordInvalid => e
+      status 422
+      json({ error: e.record.errors.full_messages.join(', ') })
+    end
+  end
 end
