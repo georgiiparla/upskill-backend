@@ -157,6 +157,14 @@ class FeedbackRequestsController < ApplicationController
       halt 403, json({ error: 'You are not authorized to delete this request.' })
     end
 
+    # Revert any quest points awarded for creating a feedback request (undo the one-time quest)
+    begin
+      QuestUpdater.revert_for(current_user, 'create_feedback_request')
+    rescue => e
+      # Log but do not block deletion; reverting points should be best-effort
+      puts "Failed to revert quest for user #{current_user.id}: #{e.message}"
+    end
+
     if feedback_request.destroy
       status 200
       json({ message: 'Feedback request deleted successfully.' })

@@ -15,4 +15,20 @@ class UserQuest < ActiveRecord::Base
       leaderboard.save!
     end
   end
+
+  # Revert a previously awarded quest: mark uncompleted and remove points
+  def mark_uncompleted!
+    return unless completed?
+
+    transaction do
+      update!(progress: 0, completed: false)
+
+      leaderboard = user.leaderboard
+      if leaderboard
+        new_points = (leaderboard.points || 0) - quest.points.to_i
+        leaderboard.points = new_points.negative? ? 0 : new_points
+        leaderboard.save!
+      end
+    end
+  end
 end

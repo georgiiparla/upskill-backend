@@ -55,6 +55,16 @@ class FeedbackSubmissionsController < ApplicationController
     end
 
     if submission.destroy
+      # If the user has no remaining feedback submissions, revert the 'give_feedback' one-time quest
+      begin
+        remaining = FeedbackSubmission.where(user_id: current_user.id).exists?
+        unless remaining
+          QuestUpdater.revert_for(current_user, 'give_feedback')
+        end
+      rescue => e
+        puts "Failed to revert give_feedback quest for user #{current_user.id}: #{e.message}"
+      end
+
       json({ message: 'Submission deleted successfully.' })
     else
       status 500
@@ -87,6 +97,18 @@ class FeedbackSubmissionsController < ApplicationController
     like = submission.feedback_submission_likes.find_by(user: current_user)
     if like
       like.destroy
+
+      # If the user has no remaining likes, revert the one-time 'like_feedback' quest
+      begin
+        remaining_likes = FeedbackSubmissionLike.where(user_id: current_user.id).exists?
+        unless remaining_likes
+          QuestUpdater.revert_for(current_user, 'like_feedback')
+        end
+      rescue => e
+        # Log but do not fail the unlike action
+        puts "Failed to revert like_feedback quest for user #{current_user.id}: #{e.message}"
+      end
+
       json({ message: 'Unliked successfully.' })
     else
       status 404

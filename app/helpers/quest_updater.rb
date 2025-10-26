@@ -14,4 +14,15 @@ module QuestUpdater
 
     user_quest.mark_completed!
   end
+
+  # Revert a quest completion for the user (remove awarded points and mark not completed)
+  def revert_for(user, quest_code)
+    quest = Quest.find_by(code: quest_code)
+    return unless quest && user
+
+    user_quest = user.user_quests.find_by(quest: quest)
+    return unless user_quest
+
+    user_quest.mark_uncompleted!
+  end
 end
