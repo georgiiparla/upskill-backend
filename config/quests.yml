@@ -1,0 +1,61 @@
+# Centralized Quest Registry
+# This file defines all quests in the system.
+# Use QuestRegistry to access quests programmatically.
+# Frontend/Backend developers can bind actions to quest codes without duplication.
+
+quests:
+  create_feedback_request:
+    code: create_feedback_request
+    title: First Feedback Request
+    description: Submit a feedback request to get input from your peers
+    points: 25
+    explicit: true
+    trigger: FeedbackRequestsController#create
+    revert: FeedbackRequestsController#destroy
+    category: feedback
+    repeatable: false
+
+  give_feedback:
+    code: give_feedback
+    title: Give Feedback
+    description: Provide constructive feedback on someone's request
+    points: 50
+    explicit: true
+    trigger: FeedbackSubmissionsController#create
+    revert: FeedbackSubmissionsController#destroy
+    category: feedback
+    repeatable: false
+
+  like_feedback:
+    code: like_feedback
+    title: Like Feedback
+    description: Show your appreciation by liking quality feedback
+    points: 10
+    explicit: true
+    trigger: FeedbackSubmissionsController#like
+    revert: FeedbackSubmissionsController#unlike
+    category: engagement
+    repeatable: true
+
+  update_agenda:
+    code: update_agenda
+    title: Update Your Agenda
+    description: Keep your agenda items up to date for better team alignment
+    points: 15
+    explicit: false
+    trigger: AgendaItemsController#update
+    revert: null
+    category: admin
+    repeatable: true
+
+  daily_login:
+    code: daily_login
+    title: Daily Login
+    description: Log in daily to stay connected and earn points
+    points: 5
+    explicit: false
+    trigger: AuthController#google_callback
+    revert: null
+    category: system
+    repeatable: true
+    reset_period: 24h

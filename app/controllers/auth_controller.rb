@@ -1,5 +1,7 @@
 require 'google/apis/oauth2_v2'
 require 'google/api_client/client_secrets'
+require_relative '../helpers/quest_updater'
+require_relative '../services/quest_registry'
 
 class AuthController < ApplicationController
 
@@ -82,6 +84,10 @@ class AuthController < ApplicationController
 
     # Generate JWT for the found/created user and redirect
     token = encode_token({ user_id: user.id })
+    
+    # Award daily login quest (5 points per login, once per 24 hours)
+    QuestUpdater.complete_for(user, QuestRegistry::QUEST_CODES[:DAILY_LOGIN])
+    
     redirect "#{ENV['FRONTEND_URL']}/auth/callback?token=#{token}"
   end
 
