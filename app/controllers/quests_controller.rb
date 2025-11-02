@@ -13,8 +13,7 @@ class QuestsController < ApplicationController
       user_progress = progress_map[quest.id]
 
       quest.as_json.merge(
-        'user_completed' => user_progress&.completed || false,
-        'user_progress' => user_progress&.progress || 0
+        'user_completed' => user_progress&.completed || false
       )
     end
 
@@ -85,6 +84,22 @@ class QuestsController < ApplicationController
         return json({ error: 'Explicit must be true or false' })
       end
       updates[:explicit] = explicit_value
+    end
+
+    if @request_payload.key?('reset_interval_seconds')
+      begin
+        reset_value = Integer(@request_payload['reset_interval_seconds'])
+      rescue ArgumentError, TypeError
+        status 422
+        return json({ error: 'Reset interval must be a valid integer' })
+      end
+
+      if reset_value.negative?
+        status 422
+        return json({ error: 'Reset interval must be greater than or equal to 0' })
+      end
+
+      updates[:reset_interval_seconds] = reset_value
     end
 
     if updates.empty?

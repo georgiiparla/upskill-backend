@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_10_26_090000) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_01_220600) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -79,14 +79,27 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_26_090000) do
     t.index ["user_id"], name: "index_leaderboards_on_user_id"
   end
 
+  create_table "quest_resets", force: :cascade do |t|
+    t.integer "quest_id", null: false
+    t.datetime "reset_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["quest_id"], name: "index_quest_resets_on_quest_id"
+  end
+
   create_table "quests", force: :cascade do |t|
     t.string "title", null: false
     t.text "description"
     t.integer "points"
-    t.string "code"
     t.boolean "explicit", default: true, null: false
-    t.index ["code"], name: "index_quests_on_code", unique: true
+    t.string "trigger_endpoint"
+    t.integer "reset_interval_seconds"
+    t.string "quest_type", default: "repeatable", null: false
+    t.datetime "created_at", default: "2025-11-01 21:06:14", null: false
+    t.datetime "updated_at", default: "2025-11-01 21:06:14", null: false
     t.index ["explicit"], name: "index_quests_on_explicit"
+    t.index ["quest_type"], name: "index_quests_on_quest_type"
+    t.index ["trigger_endpoint"], name: "index_quests_on_trigger_endpoint", unique: true
   end
 
   create_table "system_settings", force: :cascade do |t|
@@ -109,7 +122,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_26_090000) do
   create_table "user_quests", force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "quest_id", null: false
-    t.integer "progress", default: 0, null: false
     t.boolean "completed", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -135,6 +147,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_26_090000) do
   add_foreign_key "feedback_submissions", "feedback_requests"
   add_foreign_key "feedback_submissions", "users"
   add_foreign_key "leaderboards", "users"
+  add_foreign_key "quest_resets", "quests"
   add_foreign_key "user_email_aliases", "users"
   add_foreign_key "user_quests", "quests"
   add_foreign_key "user_quests", "users"

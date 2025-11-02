@@ -1,7 +1,6 @@
 require 'google/apis/oauth2_v2'
 require 'google/api_client/client_secrets'
-require_relative '../helpers/quest_updater'
-require_relative '../services/quest_registry'
+require_relative '../middleware/quest_middleware'
 
 class AuthController < ApplicationController
 
@@ -86,7 +85,7 @@ class AuthController < ApplicationController
     token = encode_token({ user_id: user.id })
     
     # Award daily login quest (5 points per login, once per 24 hours)
-    QuestUpdater.complete_for(user, QuestRegistry::QUEST_CODES[:DAILY_LOGIN])
+    QuestMiddleware.trigger(user, 'AuthController#google_callback')
     
     redirect "#{ENV['FRONTEND_URL']}/auth/callback?token=#{token}"
   end

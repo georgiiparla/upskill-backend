@@ -129,32 +129,6 @@ class ApplicationController < Sinatra::Base
       end
     end
 
-    # Traffic-based job: Reset quest progress weekly (DB-backed coordination)
-    def run_quest_reset_job
-      return unless should_check_job?('quest_reset_job')
-      
-      key = 'last_quest_reset_run'
-
-      SystemSetting.transaction do
-        rec = find_or_create_system_setting_safely(key)
-        rec = SystemSetting.lock.find_by(id: rec.id)
-        last = (Time.parse(rec.value) rescue Time.now - 1.year)
-        return unless Time.now > last + AppConfig::QUEST_RESET_FREQUENCY.seconds
-
-        begin
-          settings.logger.info "Running weekly quest reset job..."
-
-          reset_count = UserQuest.where(completed: true).update_all(completed: false, progress: 0)
-          settings.logger.info "Reset #{reset_count} completed quest(s)."
-
-          rec.update!(value: Time.now.utc.iso8601)
-        rescue => e
-          settings.logger.error "Quest reset job failed: #{e.message}"
-          raise ActiveRecord::Rollback
-        end
-      end
-    end
-
     # Traffic-based job: Reset leaderboard points monthly (DB-backed coordination)
     def run_leaderboard_reset_job
       return unless should_check_job?('leaderboard_reset_job')
@@ -185,7 +159,6 @@ class ApplicationController < Sinatra::Base
   before do
     # Traffic-based cron jobs - run on every request if enough time has passed
     run_feedback_expiration_job
-    run_quest_reset_job
     run_leaderboard_reset_job
 
     @request_payload = {}

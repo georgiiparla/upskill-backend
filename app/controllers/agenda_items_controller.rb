@@ -1,4 +1,4 @@
-require_relative '../helpers/quest_updater'
+require_relative '../middleware/quest_middleware'
 
 class AgendaItemsController < ApplicationController
   
@@ -32,7 +32,7 @@ class AgendaItemsController < ApplicationController
 
     if agenda_item.update(update_params)
       ActivityStream.create(actor: current_user, event_type: 'agenda_updated', target: agenda_item)
-      QuestUpdater.complete_for(current_user, 'update_agenda')
+      QuestMiddleware.trigger(current_user, 'AgendaItemsController#update')
       
       json agenda_item.as_json.merge(
         editor_username: agenda_item.editor&.username

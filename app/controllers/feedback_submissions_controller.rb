@@ -1,4 +1,4 @@
-require_relative '../helpers/quest_updater'
+require_relative '../middleware/quest_middleware'
 
 class FeedbackSubmissionsController < ApplicationController
   get '/' do
@@ -36,7 +36,7 @@ class FeedbackSubmissionsController < ApplicationController
     )
 
     if submission.save
-      QuestUpdater.complete_for(current_user, 'give_feedback')
+      QuestMiddleware.trigger(current_user, 'FeedbackSubmissionsController#create')
       status 201
       json submission.as_json.merge(authorName: current_user.username)
     else
@@ -59,7 +59,7 @@ class FeedbackSubmissionsController < ApplicationController
       begin
         remaining = FeedbackSubmission.where(user_id: current_user.id).exists?
         unless remaining
-          QuestUpdater.revert_for(current_user, 'give_feedback')
+          QuestMiddleware.revert(current_user, 'FeedbackSubmissionsController#create')
         end
       rescue => e
         puts "Failed to revert give_feedback quest for user #{current_user.id}: #{e.message}"
@@ -80,7 +80,8 @@ class FeedbackSubmissionsController < ApplicationController
 
     like = submission.feedback_submission_likes.new(user: current_user)
     if like.save
-      QuestUpdater.complete_for(current_user, 'like_feedback') unless submission.user_id == current_user.id
+      QuestMiddleware.trigger(current_user, 'FeedbackSubmissionsController#like') unless submission.user_id == current_user.id
+      QuestMiddleware.trigger(submission.user, 'FeedbackSubmissionsController#like_received')
       status 201
       json({ message: 'Liked successfully.' })
     else
@@ -102,7 +103,8 @@ class FeedbackSubmissionsController < ApplicationController
       begin
         remaining_likes = FeedbackSubmissionLike.where(user_id: current_user.id).exists?
         unless remaining_likes
-          QuestUpdater.revert_for(current_user, 'like_feedback')
+          QuestMiddleware.revert(current_user, 'FeedbackSubmissionsController#like')
+          QuestMiddleware.revert(submission.user, 'FeedbackSubmissionsController#like_received')
         end
       rescue => e
         # Log but do not fail the unlike action
