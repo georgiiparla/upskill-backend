@@ -1,4 +1,4 @@
-# Upskill: A Professional Growth Platform
+# Upskill
 
 Upskill is a backend application designed to foster professional development and collaboration within a team. It provides a suite of tools to encourage feedback, track progress, and recognize achievements, creating a supportive environment for continuous improvement.
 
