@@ -81,7 +81,8 @@ ActiveRecord::Base.transaction do
   AgendaItem.create!([
     { type: 'article', title: 'The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
     { type: 'article', title: 'My Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
-    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] }
+    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] },
+    { type: 'article', title: 'Effective Delegation Strategies', category: 'Leadership', due_date: '2025-08-22', editor: users[:casey], link: 'https://www.forbes.com/sites/forbescoachescouncil/2017/12/20/10-delegation-tips-for-leaders/' }
   ])
 
   puts "   - Creating new, structured mock activity stream..."
