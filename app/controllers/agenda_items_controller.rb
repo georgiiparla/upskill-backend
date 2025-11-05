@@ -1,8 +1,8 @@
 require_relative '../middleware/quest_middleware'
 
 class AgendaItemsController < ApplicationController
-  
-  VALID_ICONS = ['ClipboardList', 'BookOpen', 'FileText', 'MessageSquare', 'Lightbulb']
+
+  VALID_ICONS = ['ClipboardList', 'BookOpen', 'FileText', 'MessageSquare', 'Star']
 
   patch '/:id' do
     protected!
