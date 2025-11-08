@@ -154,12 +154,33 @@ class ApplicationController < Sinatra::Base
         end
       end
     end
+
+    # Traffic-based job: Reset repeatable quests (DB-backed coordination)
+    def run_quest_reset_job
+      return unless should_check_job?('quest_reset_job')
+
+      Quest.where.not(reset_interval_seconds: nil).find_each do |quest|
+        begin
+          if quest.should_reset_globally?
+            settings.logger.info "Resetting quest: #{quest.title} (ID: #{quest.id})"
+            quest.reset_all_users!
+          end
+        rescue => e
+          settings.logger.error "Quest reset failed for quest #{quest.id}: #{e.message}"
+        end
+      end
+    end
   end
 
   before do
     # Traffic-based cron jobs - run on every request if enough time has passed
-    run_feedback_expiration_job
-    run_leaderboard_reset_job
+    begin
+      run_feedback_expiration_job
+      run_leaderboard_reset_job
+      run_quest_reset_job
+    rescue => e
+      settings.logger.error "Background job failed: #{e.class} - #{e.message}"
+    end
 
     @request_payload = {}
     body = request.body.read

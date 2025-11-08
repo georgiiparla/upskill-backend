@@ -18,12 +18,14 @@ class QuestMiddleware
     # For 'always' type quests, always award points (no reset check needed)
     # For 'repeatable' type quests, check if enough time has passed since last reset
     if quest.quest_type == 'always'
-      # Always type: always give points
+      # Always type: always give points, regardless of completion status
       user_quest.mark_completed!
-    else
+    elsif quest.quest_type == 'repeatable'
       # Repeatable type: check reset schedule
       if quest.should_reset_globally?
         quest.reset_all_users!
+        # After reset, need to reload the user_quest to get the updated completion status
+        user_quest.reload
       end
 
       # Award points if not already completed (in this reset period)
