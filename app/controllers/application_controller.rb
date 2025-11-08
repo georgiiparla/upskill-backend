@@ -174,9 +174,13 @@ class ApplicationController < Sinatra::Base
 
   before do
     # Traffic-based cron jobs - run on every request if enough time has passed
-    run_feedback_expiration_job
-    run_leaderboard_reset_job
-    run_quest_reset_job
+    begin
+      run_feedback_expiration_job
+      run_leaderboard_reset_job
+      run_quest_reset_job
+    rescue => e
+      settings.logger.error "Background job failed: #{e.class} - #{e.message}"
+    end
 
     @request_payload = {}
     body = request.body.read
