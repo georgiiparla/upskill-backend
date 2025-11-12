@@ -34,36 +34,12 @@ class Quest < ActiveRecord::Base
     end
   end
 
-  # Get seconds remaining until next reset
-  def seconds_until_reset
+  # Get next reset timestamp
+  def next_reset_at
     return nil unless reset_interval_seconds&.positive?
     
     last_reset = reset_schedule.reset_at
-    next_reset_time = last_reset + reset_interval_seconds
-    remaining = next_reset_time - Time.current
-    
-    remaining > 0 ? remaining.to_i : 0
-  end
-
-  # Get human-readable time until reset
-  def time_until_reset
-    seconds = seconds_until_reset
-    return nil if seconds.nil?
-    return "Ready to reset" if seconds <= 0
-    
-    if seconds < 60
-      "#{seconds}s"
-    elsif seconds < 3600
-      "#{(seconds / 60).to_i}m #{seconds % 60}s"
-    elsif seconds < 86400
-      hours = (seconds / 3600).to_i
-      minutes = ((seconds % 3600) / 60).to_i
-      "#{hours}h #{minutes}m"
-    else
-      days = (seconds / 86400).to_i
-      hours = ((seconds % 86400) / 3600).to_i
-      "#{days}d #{hours}h"
-    end
+    last_reset + reset_interval_seconds
   end
 
   # Check if quest will reset on next trigger
