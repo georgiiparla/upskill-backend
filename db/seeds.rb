@@ -77,12 +77,30 @@ ActiveRecord::Base.transaction do
   ])
 
 
+  puts "   - Creating mantras..."
+  mantras = Mantra.create!([
+    { text: 'Every interaction is an opportunity to grow' },
+    { text: 'Feedback is a gift, not a criticism' },
+    { text: 'Progress over perfection' },
+    { text: 'Listen first, speak second' },
+    { text: 'Consistency builds mastery' }
+  ])
+
+  # Create initial system mantra item
+  AgendaItem.create!(
+    title: "Mantra of the week: #{mantras.first.text}",
+    icon_name: 'Star',
+    is_system_mantra: true,
+    mantra_id: mantras.first.id,
+    editor: nil,
+    due_date: Date.new(2025, 1, 1),
+    type: 'mantra'
+  )
+
   puts "   - Creating mock dashboard items..."
   AgendaItem.create!([
     { type: 'article', title: 'The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
-    { type: 'article', title: 'My Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
-    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] },
-    { type: 'article', title: 'Effective Delegation Strategies', category: 'Leadership', due_date: '2025-08-22', editor: users[:casey], link: 'https://www.forbes.com/sites/forbescoachescouncil/2017/12/20/10-delegation-tips-for-leaders/' }
+    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:casey] }
   ])
 
   puts "   - Creating new, structured mock activity stream..."
@@ -95,19 +113,21 @@ ActiveRecord::Base.transaction do
   )
 
   ActivityStream.create!(
-    actor: nil,
+    actor: users[:jordan],
     target: request3,
     event_type: 'feedback_closed',
     created_at: request3.updated_at
   )
 
-  agenda_item = AgendaItem.find_by!(title: 'My Feedback')
-  ActivityStream.create!(
-    actor: users[:casey],
-    target: agenda_item,
-    event_type: 'agenda_updated',
-    created_at: Time.now - 1.hour
-  )
+  agenda_item = AgendaItem.find_by(title: 'The Art of Giving Constructive Feedback')
+  if agenda_item
+    ActivityStream.create!(
+      actor: users[:casey],
+      target: agenda_item,
+      event_type: 'agenda_updated',
+      created_at: Time.now - 1.hour
+    )
+  end
 
 end
 

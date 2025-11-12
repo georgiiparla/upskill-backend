@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_12_141001) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -32,7 +32,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
     t.string "link"
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.boolean "is_system_mantra", default: false, null: false
+    t.integer "mantra_id"
     t.index ["editor_id"], name: "index_agenda_items_on_editor_id"
+    t.index ["mantra_id"], name: "index_agenda_items_on_mantra_id"
   end
 
   create_table "feedback_requests", force: :cascade do |t|
@@ -77,6 +80,12 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
     t.integer "points"
     t.text "badges"
     t.index ["user_id"], name: "index_leaderboards_on_user_id"
+  end
+
+  create_table "mantras", force: :cascade do |t|
+    t.string "text", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "quest_resets", force: :cascade do |t|
@@ -140,6 +149,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
   end
 
   add_foreign_key "activity_streams", "users", column: "actor_id"
+  add_foreign_key "agenda_items", "mantras"
   add_foreign_key "agenda_items", "users", column: "editor_id"
   add_foreign_key "feedback_requests", "users", column: "requester_id"
   add_foreign_key "feedback_submission_likes", "feedback_submissions"
