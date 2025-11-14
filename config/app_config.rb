@@ -17,7 +17,7 @@ module AppConfig
     # For development/testing: reset leaderboard every 5 minutes
     LEADERBOARD_RESET_FREQUENCY = 5 * 60 # in seconds
     # For development/testing: cycle mantras every 20 seconds
-    MANTRA_CYCLE_INTERVAL = 20 # in seconds
+    MANTRA_CYCLE_INTERVAL = 60 # in seconds
 
   end
 end

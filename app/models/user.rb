@@ -22,6 +22,14 @@ class User < ActiveRecord::Base
   # Additional associations
   has_many :email_aliases, class_name: 'UserEmailAlias', dependent: :destroy
 
+  def has_unviewed_activity_stream?
+    ActivityStream.where('created_at > ?', last_viewed_activity_stream).exists?
+  end
+
+  def mark_activity_stream_viewed
+    update(last_viewed_activity_stream: Time.current)
+  end
+
   private
 
   # Create UserQuest records for all existing quests

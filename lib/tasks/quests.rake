@@ -56,13 +56,13 @@ namespace :db do
       },
       {
         title: "Receive Quality Recognition",
-        description: "Earn point when others like your feedback",
+        description: "Earn points when others like your feedback",
         points: 3,
         explicit: true,
         trigger_endpoint: "FeedbackSubmissionsController#like_received",
         quest_type: "always",
         reset_interval_seconds: nil
-      }
+      },
     ])
 
     puts "  - Created #{quests.length} quests"

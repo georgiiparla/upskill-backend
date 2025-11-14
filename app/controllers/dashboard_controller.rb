@@ -61,8 +61,15 @@ class DashboardController < ApplicationController
     json({ 
       agendaItems: agenda_items_json, 
       activityStream: activity_json, 
-      activityData: activity_data 
+      activityData: activity_data,
+      hasUnviewedEvents: current_user.has_unviewed_activity_stream?
     })
+  end
+
+  post '/mark-activity-viewed' do
+    protected!
+    current_user.mark_activity_stream_viewed
+    json({ success: true })
   end
 
   private
