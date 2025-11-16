@@ -78,6 +78,17 @@ class ApplicationController < Sinatra::Base
       halt 401, json({ error: 'Unauthorized' }) unless current_user
     end
 
+    def admin_protected!
+      halt 401, json({ error: 'Unauthorized' }) unless current_user
+      halt 403, json({ error: 'Access denied. Admin privileges required.' }) unless is_admin?(current_user)
+    end
+
+    def is_admin?(user)
+      return false unless user&.email
+      admin_emails = ENV['ADMIN_EMAILS']&.split(',')&.map(&:strip) || []
+      admin_emails.include?(user.email)
+    end
+
     # Safer find-or-create for SystemSetting to avoid a race where two
     # processes try to create the same key concurrently (Postgres / Supabase).
     def find_or_create_system_setting_safely(key)

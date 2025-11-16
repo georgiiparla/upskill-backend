@@ -40,7 +40,7 @@ class QuestsController < ApplicationController
   end
 
   post '/' do
-    protected!
+    admin_protected!
 
     explicit_value = if @request_payload.key?('explicit')
       ActiveRecord::Type::Boolean.new.cast(@request_payload['explicit'])
@@ -70,7 +70,7 @@ class QuestsController < ApplicationController
   end
 
   patch '/:id' do
-    protected!
+    admin_protected!
 
     quest = Quest.find_by(id: params[:id])
     unless quest
@@ -136,7 +136,7 @@ class QuestsController < ApplicationController
   end
 
   delete '/:id' do
-    protected!
+    admin_protected!
 
     quest = Quest.find_by(id: params[:id])
     unless quest
@@ -158,7 +158,7 @@ class QuestsController < ApplicationController
   end
 
   get '/admin' do
-    protected!
+    admin_protected!
     
     quests = Quest.order(id: :asc)
     admin_quests_payload = quests.map do |quest|
