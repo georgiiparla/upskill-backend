@@ -57,7 +57,7 @@ namespace :db do
       {
         title: "Daily check-in",
         description: "Log in each day to stay connected",
-        points: 6,
+        points: 3,
         explicit: true,
         trigger_endpoint: "AuthController#google_callback",
         quest_type: "interval-based",
