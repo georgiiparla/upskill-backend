@@ -2,7 +2,7 @@ puts "Seeding database with mock data..."
 
 ActiveRecord::Base.transaction do
   puts "   - Deleting old data..."
-  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, User].each(&:destroy_all)
+  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, UserQuest, Quest, AgendaItem, User].each(&:destroy_all)
 
   puts "   - Creating mock users..."
   users = {}

@@ -166,7 +166,7 @@ class ApplicationController < Sinatra::Base
       end
     end
 
-    # Traffic-based job: Reset repeatable quests (DB-backed coordination)
+    # Traffic-based job: Reset interval-based quests (DB-backed coordination)
     def run_quest_reset_job
       return unless should_check_job?('quest_reset_job')
 

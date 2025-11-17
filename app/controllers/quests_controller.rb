@@ -8,16 +8,28 @@ class QuestsController < ApplicationController
 
     quests = quests_scope
     progress_map = current_user.user_quests.where(quest_id: quests.map(&:id)).index_by(&:quest_id)
+    
+    # Track when user last viewed quests
+    last_viewed_quests = current_user.last_viewed_quests
 
     quests_payload = quests.map do |quest|
       user_progress = progress_map[quest.id]
 
+      # For "always" quests, check if points were awarded since last view
+      has_new_progress = false
+      if quest.quest_type == 'always' && user_progress&.first_awarded_at
+        has_new_progress = !last_viewed_quests || user_progress.first_awarded_at > last_viewed_quests
+      end
+
       quest_data = quest.as_json.merge(
-        'user_completed' => user_progress&.completed || false
+        'user_completed' => user_progress&.completed || false,
+        'last_triggered_at' => user_progress&.last_triggered_at,
+        'first_awarded_at' => user_progress&.first_awarded_at,
+        'has_new_progress' => has_new_progress
       )
 
-      # Add reset timing information for repeatable quests
-      if quest.quest_type == 'repeatable' && quest.reset_interval_seconds&.positive?
+      # Add reset timing information for interval-based quests
+      if quest.quest_type == 'interval-based' && quest.reset_interval_seconds&.positive?
         quest_data.merge!(
           'reset_interval_seconds' => quest.reset_interval_seconds,
           'last_reset_at' => quest.reset_schedule.reset_at,
@@ -35,6 +47,9 @@ class QuestsController < ApplicationController
 
       quest_data
     end
+
+    # Update last_viewed_quests timestamp
+    current_user.update_column(:last_viewed_quests, Time.now.utc)
 
     json quests_payload
   end
@@ -164,8 +179,8 @@ class QuestsController < ApplicationController
     admin_quests_payload = quests.map do |quest|
       quest_data = quest.as_json
 
-      # Add raw timing data for repeatable quests
-      if quest.quest_type == 'repeatable' && quest.reset_interval_seconds&.positive?
+      # Add raw timing data for interval-based quests
+      if quest.quest_type == 'interval-based' && quest.reset_interval_seconds&.positive?
         quest_data.merge!(
           'reset_interval_seconds' => quest.reset_interval_seconds,
           'last_reset_at' => quest.reset_schedule.reset_at,

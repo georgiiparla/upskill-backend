@@ -31,7 +31,8 @@ class DashboardController < ApplicationController
         user_name: activity.actor&.username || 'System', 
         event_type: activity.event_type,
         target_info: target_info,
-        created_at: activity.created_at
+        created_at: activity.created_at,
+        isNew: activity.created_at > current_user.last_viewed_activity_stream
       }
     end
     

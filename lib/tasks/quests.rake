@@ -10,59 +10,59 @@ namespace :db do
     puts "  - Creating new quests..."
     quests = Quest.create!([
       {
-        title: "First Feedback Request",
-        description: "Submit your first feedback request",
-        points: 25,
-        explicit: true,
-        trigger_endpoint: "FeedbackRequestsController#create",
-        quest_type: "repeatable",
-        reset_interval_seconds: 1.year
-      },
-      {
-        title: "Give Feedback",
-        description: "Provide constructive feedback on someone's request",
-        points: 50,
-        explicit: true,
-        trigger_endpoint: "FeedbackSubmissionsController#create",
-        quest_type: "repeatable",
-        reset_interval_seconds: 1.year
-      },
-      {
-        title: "Like Quality Feedback",
-        description: "Show your appreciation by liking quality feedback",
-        points: 10,
-        explicit: true,
-        trigger_endpoint: "FeedbackSubmissionsController#like",
-        quest_type: "repeatable",
-        reset_interval_seconds: 7.days
-      },
-      {
-        title: "Update Your Agenda",
-        description: "Keep your agenda items up to date",
+        title: "Ask for Feedback",
+        description: "Create a feedback request to get input from teammates",
         points: 15,
         explicit: false,
-        trigger_endpoint: "AgendaItemsController#update",
-        quest_type: "repeatable",
-        reset_interval_seconds: 1.day
+        trigger_endpoint: "FeedbackRequestsController#create",
+        quest_type: "always",
+        reset_interval_seconds: nil
       },
       {
-        title: "Daily Login",
-        description: "Log in daily to earn points",
+        title: "Like a teammate's feedback",
+        description: "Like feedback written by someone else",
+        points: 7,
+        explicit: false,
+        trigger_endpoint: "FeedbackSubmissionsController#like",
+        quest_type: "always",
+        reset_interval_seconds: nil
+      },
+      {
+        title: "Receive a like on your feedback",
+        description: "Earn points when someone likes your feedback",
         points: 5,
         explicit: false,
-        trigger_endpoint: "AuthController#google_callback",
-        quest_type: "repeatable",
-        reset_interval_seconds: 1.day
-      },
-      {
-        title: "Receive Quality Recognition",
-        description: "Earn points when others like your feedback",
-        points: 3,
-        explicit: true,
         trigger_endpoint: "FeedbackSubmissionsController#like_received",
         quest_type: "always",
         reset_interval_seconds: nil
       },
+      {
+        title: "Write feedback",
+        description: "Submit thoughtful feedback on a request",
+        points: 15,
+        explicit: false,
+        trigger_endpoint: "FeedbackSubmissionsController#create",
+        quest_type: "always",
+        reset_interval_seconds: nil
+      },
+      {
+        title: "Weekly agenda update",
+        description: "Update your weekly agenda for the week",
+        points: 8,
+        explicit: true,
+        trigger_endpoint: "AgendaItemsController#update",
+        quest_type: "interval-based",
+        reset_interval_seconds: 1.week
+      },
+      {
+        title: "Daily check-in",
+        description: "Log in each day to stay connected",
+        points: 6,
+        explicit: true,
+        trigger_endpoint: "AuthController#google_callback",
+        quest_type: "interval-based",
+        reset_interval_seconds: 1.day
+      }
     ])
 
     puts "  - Created #{quests.length} quests"

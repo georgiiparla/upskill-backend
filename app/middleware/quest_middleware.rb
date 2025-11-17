@@ -3,49 +3,53 @@
 #   QuestMiddleware.trigger(current_user, 'FeedbackRequestsController#create')
 #
 # Quest Types:
-#   'repeatable' - Awards points once per reset_interval_seconds (daily, weekly, etc)
-#   'always'     - Awards points every time endpoint is triggered (no reset limit)
+#   'interval-based' - Awards points once per reset_interval_seconds (daily, weekly, etc)
+#   'always'         - Awards points every time endpoint is triggered (no reset limit)
 
 class QuestMiddleware
   def self.trigger(user, endpoint)
     return nil if user.nil? || endpoint.blank?
 
-    quest = Quest.find_by(trigger_endpoint: endpoint)
-    return nil unless quest
+    quests = Quest.where(trigger_endpoint: endpoint)
+    return nil if quests.empty?
 
-    user_quest = user.user_quests.find_or_create_by(quest: quest)
+    last_user_quest = nil
 
-    # For 'always' type quests, always award points (no reset check needed)
-    # For 'repeatable' type quests, check if enough time has passed since last reset
-    if quest.quest_type == 'always'
-      # Always type: always give points, regardless of completion status
-      user_quest.mark_completed!
-    elsif quest.quest_type == 'repeatable'
-      # Repeatable type: check reset schedule
-      if quest.should_reset_globally?
-        quest.reset_all_users!
-        # After reset, need to reload the user_quest to get the updated completion status
-        user_quest.reload
+    quests.find_each do |quest|
+      user_quest = user.user_quests.find_or_create_by(quest: quest)
+
+      if quest.quest_type == 'always'
+        user_quest.mark_completed!
+      elsif quest.quest_type == 'interval-based'
+        if quest.should_reset_globally?
+          quest.reset_all_users!
+          user_quest.reload
+        end
+        user_quest.mark_completed! unless user_quest.completed?
       end
 
-      # Award points if not already completed (in this reset period)
-      user_quest.mark_completed! unless user_quest.completed?
+      last_user_quest = user_quest
     end
 
-    user_quest
+    last_user_quest
   end
 
   def self.revert(user, endpoint)
     return nil if user.nil? || endpoint.blank?
 
-    quest = Quest.find_by(trigger_endpoint: endpoint)
-    return nil unless quest
+    quests = Quest.where(trigger_endpoint: endpoint)
+    return nil if quests.empty?
 
-    user_quest = user.user_quests.find_by(quest: quest)
-    return nil unless user_quest
+    last_user_quest = nil
 
-    user_quest.mark_uncompleted!
-    user_quest
+    quests.find_each do |quest|
+      user_quest = user.user_quests.find_by(quest: quest)
+      next unless user_quest
+      user_quest.mark_uncompleted!
+      last_user_quest = user_quest
+    end
+
+    last_user_quest
   end
 end
 

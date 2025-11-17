@@ -3,11 +3,11 @@ class Quest < ActiveRecord::Base
   has_one :reset_schedule, class_name: 'QuestReset', dependent: :destroy
 
   attribute :explicit, :boolean, default: true
-  attribute :quest_type, :string, default: 'repeatable'
+  attribute :quest_type, :string, default: 'interval-based'
 
   validates :title, presence: true
-  validates :trigger_endpoint, uniqueness: true, allow_nil: true
-  validates :quest_type, inclusion: { in: %w(repeatable always), message: "%{value} is not valid" }
+  validates :trigger_endpoint, presence: true
+  validates :quest_type, inclusion: { in: %w(interval-based always), message: "%{value} is not valid" }
 
   # Get or initialize the reset schedule for this quest
   def reset_schedule
