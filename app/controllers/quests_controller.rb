@@ -17,8 +17,8 @@ class QuestsController < ApplicationController
 
       # For "always" quests, check if points were awarded since last view
       has_new_progress = false
-      if quest.quest_type == 'always' && user_progress&.first_awarded_at
-        has_new_progress = !last_viewed_quests || user_progress.first_awarded_at > last_viewed_quests
+      if quest.quest_type == 'always' && user_progress&.last_triggered_at
+        has_new_progress = !last_viewed_quests || user_progress.last_triggered_at > last_viewed_quests
       end
 
       quest_data = quest.as_json.merge(

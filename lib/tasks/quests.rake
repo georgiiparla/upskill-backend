@@ -11,7 +11,7 @@ namespace :db do
     quests = Quest.create!([
       {
         title: "Ask for Feedback",
-        description: "Create a feedback request to get input from teammates",
+        description: "Create a feedback request",
         points: 15,
         explicit: false,
         trigger_endpoint: "FeedbackRequestsController#create",
@@ -39,7 +39,7 @@ namespace :db do
       {
         title: "Write feedback",
         description: "Submit thoughtful feedback on a request",
-        points: 15,
+        points: 11,
         explicit: false,
         trigger_endpoint: "FeedbackSubmissionsController#create",
         quest_type: "always",
@@ -47,7 +47,7 @@ namespace :db do
       },
       {
         title: "Weekly agenda update",
-        description: "Update your weekly agenda for the week",
+        description: "Update the weekly agenda for this week",
         points: 8,
         explicit: true,
         trigger_endpoint: "AgendaItemsController#update",
