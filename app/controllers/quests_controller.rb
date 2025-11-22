@@ -8,25 +8,39 @@ class QuestsController < ApplicationController
 
     quests = quests_scope
     progress_map = current_user.user_quests.where(quest_id: quests.map(&:id)).index_by(&:quest_id)
+    
+    # Track when user last viewed quests
+    last_viewed_quests = current_user.last_viewed_quests
 
     quests_payload = quests.map do |quest|
       user_progress = progress_map[quest.id]
 
+      # For "always" quests, check if points were awarded since last view
+      has_new_progress = false
+      if quest.quest_type == 'always' && user_progress&.last_triggered_at
+        has_new_progress = !last_viewed_quests || user_progress.last_triggered_at > last_viewed_quests
+      end
+
       quest_data = quest.as_json.merge(
-        'user_completed' => user_progress&.completed || false
+        'user_completed' => user_progress&.completed || false,
+        'last_triggered_at' => user_progress&.last_triggered_at,
+        'first_awarded_at' => user_progress&.first_awarded_at,
+        'has_new_progress' => has_new_progress
       )
 
-      # Add reset information for repeatable quests
-      if quest.quest_type == 'repeatable' && quest.reset_interval_seconds&.positive?
+      # Add reset timing information for interval-based quests
+      if quest.quest_type == 'interval-based' && quest.reset_interval_seconds&.positive?
         quest_data.merge!(
-          'seconds_until_reset' => quest.seconds_until_reset,
-          'time_until_reset' => quest.time_until_reset,
+          'reset_interval_seconds' => quest.reset_interval_seconds,
+          'last_reset_at' => quest.reset_schedule.reset_at,
+          'next_reset_at' => quest.next_reset_at,
           'will_reset_on_next_trigger' => quest.will_reset_on_next_trigger?
         )
       elsif quest.quest_type == 'always'
         quest_data.merge!(
-          'seconds_until_reset' => nil,
-          'time_until_reset' => 'No reset (always active)',
+          'reset_interval_seconds' => nil,
+          'last_reset_at' => nil,
+          'next_reset_at' => nil,
           'will_reset_on_next_trigger' => false
         )
       end
@@ -34,11 +48,14 @@ class QuestsController < ApplicationController
       quest_data
     end
 
+    # Update last_viewed_quests timestamp
+    current_user.update_column(:last_viewed_quests, Time.now.utc)
+
     json quests_payload
   end
 
   post '/' do
-    protected!
+    admin_protected!
 
     explicit_value = if @request_payload.key?('explicit')
       ActiveRecord::Type::Boolean.new.cast(@request_payload['explicit'])
@@ -68,7 +85,7 @@ class QuestsController < ApplicationController
   end
 
   patch '/:id' do
-    protected!
+    admin_protected!
 
     quest = Quest.find_by(id: params[:id])
     unless quest
@@ -134,7 +151,7 @@ class QuestsController < ApplicationController
   end
 
   delete '/:id' do
-    protected!
+    admin_protected!
 
     quest = Quest.find_by(id: params[:id])
     unless quest
@@ -156,30 +173,28 @@ class QuestsController < ApplicationController
   end
 
   get '/admin' do
-    protected!
+    admin_protected!
     
     quests = Quest.order(id: :asc)
     admin_quests_payload = quests.map do |quest|
       quest_data = quest.as_json
 
-      # Add comprehensive reset information
-      if quest.quest_type == 'repeatable' && quest.reset_interval_seconds&.positive?
+      # Add raw timing data for interval-based quests
+      if quest.quest_type == 'interval-based' && quest.reset_interval_seconds&.positive?
         quest_data.merge!(
-          'seconds_until_reset' => quest.seconds_until_reset,
-          'time_until_reset' => quest.time_until_reset,
-          'will_reset_on_next_trigger' => quest.will_reset_on_next_trigger?,
+          'reset_interval_seconds' => quest.reset_interval_seconds,
           'last_reset_at' => quest.reset_schedule.reset_at,
-          'reset_interval_human' => humanize_duration(quest.reset_interval_seconds),
+          'next_reset_at' => quest.next_reset_at,
+          'will_reset_on_next_trigger' => quest.will_reset_on_next_trigger?,
           'completed_users_count' => quest.user_quests.where(completed: true).count,
           'total_users_count' => quest.user_quests.count
         )
       elsif quest.quest_type == 'always'
         quest_data.merge!(
-          'seconds_until_reset' => nil,
-          'time_until_reset' => 'No reset (always active)',
-          'will_reset_on_next_trigger' => false,
+          'reset_interval_seconds' => nil,
           'last_reset_at' => nil,
-          'reset_interval_human' => 'Always active',
+          'next_reset_at' => nil,
+          'will_reset_on_next_trigger' => false,
           'completed_users_count' => quest.user_quests.where(completed: true).count,
           'total_users_count' => quest.user_quests.count
         )
@@ -192,30 +207,4 @@ class QuestsController < ApplicationController
   end
 
   private
-
-  def humanize_duration(seconds)
-    return 'None' if seconds.nil? || seconds <= 0
-    
-    if seconds < 60
-      "#{seconds} seconds"
-    elsif seconds < 3600
-      minutes = seconds / 60
-      "#{minutes} minutes"
-    elsif seconds < 86400
-      hours = seconds / 3600
-      "#{hours} hours"
-    elsif seconds < 604800
-      days = seconds / 86400
-      "#{days} days"
-    elsif seconds < 2592000
-      weeks = seconds / 604800
-      "#{weeks} weeks"
-    elsif seconds < 31536000
-      months = seconds / 2592000
-      "#{months.round(1)} months"
-    else
-      years = seconds / 31536000
-      "#{years.round(1)} years"
-    end
-  end
 end

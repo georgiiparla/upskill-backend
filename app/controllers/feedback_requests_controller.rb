@@ -158,6 +158,8 @@ class FeedbackRequestsController < ApplicationController
     end
 
     if feedback_request.destroy
+      # Revert the "Ask for Feedback" quest points
+      QuestMiddleware.revert(current_user, 'FeedbackRequestsController#create')
       status 200
       json({ message: 'Feedback request deleted successfully.' })
     else

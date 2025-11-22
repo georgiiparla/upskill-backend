@@ -96,7 +96,11 @@ class AuthController < ApplicationController
 
   get '/profile' do
     if current_user
-      json({ logged_in: true, user: current_user.slice(:id, :username, :email) })
+      json({ 
+        logged_in: true, 
+        user: current_user.slice(:id, :username, :email),
+        is_admin: is_admin?(current_user)
+      })
     else
       json({ logged_in: false })
     end

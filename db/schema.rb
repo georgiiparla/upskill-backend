@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_17_194715) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -32,7 +32,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
     t.string "link"
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.boolean "is_system_mantra", default: false, null: false
+    t.integer "mantra_id"
     t.index ["editor_id"], name: "index_agenda_items_on_editor_id"
+    t.index ["mantra_id"], name: "index_agenda_items_on_mantra_id"
   end
 
   create_table "feedback_requests", force: :cascade do |t|
@@ -79,6 +82,12 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
     t.index ["user_id"], name: "index_leaderboards_on_user_id"
   end
 
+  create_table "mantras", force: :cascade do |t|
+    t.string "text", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "quest_resets", force: :cascade do |t|
     t.integer "quest_id", null: false
     t.datetime "reset_at", null: false
@@ -99,7 +108,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
     t.datetime "updated_at", default: "2025-11-01 21:06:14", null: false
     t.index ["explicit"], name: "index_quests_on_explicit"
     t.index ["quest_type"], name: "index_quests_on_quest_type"
-    t.index ["trigger_endpoint"], name: "index_quests_on_trigger_endpoint", unique: true
+    t.index ["trigger_endpoint"], name: "index_quests_on_trigger_endpoint"
   end
 
   create_table "system_settings", force: :cascade do |t|
@@ -125,6 +134,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
     t.boolean "completed", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "last_triggered_at"
+    t.datetime "first_awarded_at"
     t.index ["quest_id"], name: "index_user_quests_on_quest_id"
     t.index ["user_id", "quest_id"], name: "index_user_quests_on_user_id_and_quest_id", unique: true
     t.index ["user_id"], name: "index_user_quests_on_user_id"
@@ -136,10 +147,13 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_05_120000) do
     t.string "password_digest", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "last_viewed_activity_stream", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "last_viewed_quests"
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
   add_foreign_key "activity_streams", "users", column: "actor_id"
+  add_foreign_key "agenda_items", "mantras"
   add_foreign_key "agenda_items", "users", column: "editor_id"
   add_foreign_key "feedback_requests", "users", column: "requester_id"
   add_foreign_key "feedback_submission_likes", "feedback_submissions"
