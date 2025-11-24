@@ -32,6 +32,7 @@ class DashboardController < ApplicationController
         event_type: activity.event_type,
         target_info: target_info,
         created_at: activity.created_at,
+        formatted_date: activity.created_at.strftime('%d %b'),
         isNew: activity.created_at > current_user.last_viewed_activity_stream
       }
     end
