@@ -1,14 +1,15 @@
-require_relative '../helpers/quest_updater'
+require_relative '../middleware/quest_middleware'
 
 class AgendaItemsController < ApplicationController
-  
-  VALID_ICONS = ['ClipboardList', 'BookOpen', 'FileText', 'MessageSquare', 'Lightbulb']
+
+  VALID_ICONS = ['ClipboardList', 'BookOpen', 'FileText', 'MessageSquare', 'Star']
 
   patch '/:id' do
     protected!
     
     agenda_item = AgendaItem.find_by(id: params['id'])
     halt 404, json({ error: "Agenda item not found." }) unless agenda_item
+    halt 422, json({ error: "System mantras cannot be edited." }) if agenda_item.is_system_mantra
 
     update_params = { editor: current_user } # Always set the current user as the editor
 
@@ -32,10 +33,11 @@ class AgendaItemsController < ApplicationController
 
     if agenda_item.update(update_params)
       ActivityStream.create(actor: current_user, event_type: 'agenda_updated', target: agenda_item)
-      QuestUpdater.complete_for(current_user, 'update_agenda')
+      QuestMiddleware.trigger(current_user, 'AgendaItemsController#update')
       
       json agenda_item.as_json.merge(
-        editor_username: agenda_item.editor&.username
+        editor_username: agenda_item.editor&.username,
+        is_system_mantra: agenda_item.is_system_mantra
       )
     else
       status 422

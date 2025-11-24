@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_17_194715) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -32,7 +32,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
     t.string "link"
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.boolean "is_system_mantra", default: false, null: false
+    t.integer "mantra_id"
     t.index ["editor_id"], name: "index_agenda_items_on_editor_id"
+    t.index ["mantra_id"], name: "index_agenda_items_on_mantra_id"
   end
 
   create_table "feedback_requests", force: :cascade do |t|
@@ -79,12 +82,33 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
     t.index ["user_id"], name: "index_leaderboards_on_user_id"
   end
 
+  create_table "mantras", force: :cascade do |t|
+    t.string "text", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "quest_resets", force: :cascade do |t|
+    t.integer "quest_id", null: false
+    t.datetime "reset_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["quest_id"], name: "index_quest_resets_on_quest_id"
+  end
+
   create_table "quests", force: :cascade do |t|
     t.string "title", null: false
     t.text "description"
     t.integer "points"
-    t.string "code"
-    t.index ["code"], name: "index_quests_on_code", unique: true
+    t.boolean "explicit", default: true, null: false
+    t.string "trigger_endpoint"
+    t.integer "reset_interval_seconds"
+    t.string "quest_type", default: "repeatable", null: false
+    t.datetime "created_at", default: "2025-11-01 21:06:14", null: false
+    t.datetime "updated_at", default: "2025-11-01 21:06:14", null: false
+    t.index ["explicit"], name: "index_quests_on_explicit"
+    t.index ["quest_type"], name: "index_quests_on_quest_type"
+    t.index ["trigger_endpoint"], name: "index_quests_on_trigger_endpoint"
   end
 
   create_table "system_settings", force: :cascade do |t|
@@ -107,10 +131,11 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
   create_table "user_quests", force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "quest_id", null: false
-    t.integer "progress", default: 0, null: false
     t.boolean "completed", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "last_triggered_at"
+    t.datetime "first_awarded_at"
     t.index ["quest_id"], name: "index_user_quests_on_quest_id"
     t.index ["user_id", "quest_id"], name: "index_user_quests_on_user_id_and_quest_id", unique: true
     t.index ["user_id"], name: "index_user_quests_on_user_id"
@@ -122,10 +147,13 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
     t.string "password_digest", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "last_viewed_activity_stream", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "last_viewed_quests"
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
   add_foreign_key "activity_streams", "users", column: "actor_id"
+  add_foreign_key "agenda_items", "mantras"
   add_foreign_key "agenda_items", "users", column: "editor_id"
   add_foreign_key "feedback_requests", "users", column: "requester_id"
   add_foreign_key "feedback_submission_likes", "feedback_submissions"
@@ -133,6 +161,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_14_120000) do
   add_foreign_key "feedback_submissions", "feedback_requests"
   add_foreign_key "feedback_submissions", "users"
   add_foreign_key "leaderboards", "users"
+  add_foreign_key "quest_resets", "quests"
   add_foreign_key "user_email_aliases", "users"
   add_foreign_key "user_quests", "quests"
   add_foreign_key "user_quests", "users"
