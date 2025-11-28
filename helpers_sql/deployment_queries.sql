@@ -1,20 +1,27 @@
--- Deployment Queries for Supabase
--- Run these queries in the Supabase SQL Editor after running the migrations.
+-- =======================================================================
+-- FINAL PRODUCTION DEPLOYMENT SCRIPT
+-- EXECUTE AFTER RUNNING `rake db:migrate`
+-- =======================================================================
 
--- ==========================================
--- 1. AGENDA ITEMS & MANTRAS
--- ==========================================
+BEGIN;
 
--- Data Migration: Change 'Lightbulb' icon to 'Star' in agenda_items
+-- -----------------------------------------------------------------------
+-- 1. DATA CLEANUP & NORMALIZATION (AGENDA ITEMS)
+-- -----------------------------------------------------------------------
+
+-- Ensure all icons are updated (Redundant safety for migration 20251105)
 UPDATE agenda_items 
 SET icon_name = 'Star' 
 WHERE icon_name = 'Lightbulb';
 
--- Managerial: Remove the specific legacy agenda item
+-- Remove legacy item that is no longer relevant
 DELETE FROM agenda_items 
 WHERE title = 'Cutting Corner Hurts';
 
--- Seed Data: Mantras
+-- -----------------------------------------------------------------------
+-- 2. SEEDING MANTRAS
+-- -----------------------------------------------------------------------
+
 INSERT INTO mantras (text, created_at, updated_at)
 SELECT 'Every interaction is an opportunity to grow', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM mantras WHERE text = 'Every interaction is an opportunity to grow');
@@ -35,14 +42,22 @@ INSERT INTO mantras (text, created_at, updated_at)
 SELECT 'Consistency builds mastery', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM mantras WHERE text = 'Consistency builds mastery');
 
--- Seed Data: Initial System Mantra Agenda Item
+INSERT INTO mantras (text, created_at, updated_at)
+SELECT 'Better Me + Better You = Better Us', NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM mantras WHERE text = 'Better Me + Better You = Better Us');
+
+-- -----------------------------------------------------------------------
+-- 3. INITIALIZING SYSTEM MANTRA
+-- -----------------------------------------------------------------------
+
+-- Ensure the dashboard has a "Mantra of the week" to display
 INSERT INTO agenda_items (title, icon_name, is_system_mantra, mantra_id, due_date, type, created_at, updated_at)
 SELECT 
   'Mantra of the week: ' || text,
   'Star',
   true,
   id,
-  '2025-01-01',
+  '2026-01-01', -- Set far in future
   'mantra',
   NOW(),
   NOW()
@@ -50,27 +65,23 @@ FROM mantras
 WHERE text = 'Every interaction is an opportunity to grow'
 AND NOT EXISTS (SELECT 1 FROM agenda_items WHERE is_system_mantra = true);
 
+-- -----------------------------------------------------------------------
+-- 4. GAMIFICATION REFACTOR (DESTRUCTIVE RESET)
+-- -----------------------------------------------------------------------
 
--- ==========================================
--- 2. QUESTS & GAMIFICATION
--- ==========================================
-
--- CLEAR OLD DATA
--- We must delete in this order to satisfy Foreign Key constraints:
--- 1. user_quests (depends on quests and users)
--- 2. quest_resets (depends on quests)
--- 3. quests (parent table)
-
+-- Wipe old quest data to support new QuestMiddleware logic
+-- Order is important due to Foreign Key constraints
 DELETE FROM user_quests;
 DELETE FROM quest_resets;
 DELETE FROM quests;
 
--- RESET LEADERBOARDS
--- Since we wiped user progress, we should reset points to 0 to stay consistent.
+-- Reset Leaderboards to 0 (Fresh Start)
 UPDATE leaderboards SET points = 0;
 
--- INSERT NEW QUESTS
--- Based on lib/tasks/quests.rake
+-- -----------------------------------------------------------------------
+-- 5. SEEDING NEW QUESTS
+-- -----------------------------------------------------------------------
+
 INSERT INTO quests (title, description, points, explicit, trigger_endpoint, quest_type, reset_interval_seconds, created_at, updated_at) VALUES
 (
   'Presentation Feedback', 
@@ -101,7 +112,7 @@ INSERT INTO quests (title, description, points, explicit, trigger_endpoint, ques
   true, 
   'AgendaItemsController#update', 
   'interval-based', 
-  604800, -- 1 week
+  604800, -- 1 week in seconds
   NOW(), 
   NOW()
 ),
@@ -123,7 +134,7 @@ INSERT INTO quests (title, description, points, explicit, trigger_endpoint, ques
   true, 
   'AuthController#google_callback', 
   'interval-based', 
-  86400, -- 1 day
+  86400, -- 1 day in seconds
   NOW(), 
   NOW()
 ),
@@ -139,11 +150,16 @@ INSERT INTO quests (title, description, points, explicit, trigger_endpoint, ques
   NOW()
 );
 
--- BACKFILL USER QUESTS
--- Existing users need to have UserQuest records for the new quests to track progress.
--- We perform a CROSS JOIN to create a record for every user-quest combination.
+-- -----------------------------------------------------------------------
+-- 6. BACKFILLING USER QUESTS
+-- -----------------------------------------------------------------------
+
+-- Create empty progress records for ALL existing users for ALL new quests
+-- This ensures users can immediately start earning points without errors
 INSERT INTO user_quests (user_id, quest_id, completed, created_at, updated_at)
 SELECT u.id, q.id, false, NOW(), NOW()
 FROM users u
 CROSS JOIN quests q
 ON CONFLICT (user_id, quest_id) DO NOTHING;
+
+COMMIT;
