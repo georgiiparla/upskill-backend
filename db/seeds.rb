@@ -78,12 +78,22 @@ ActiveRecord::Base.transaction do
 
 
   puts "   - Creating mantras..."
+
   mantras = Mantra.create!([
-    { text: 'Every interaction is an opportunity to grow' },
-    { text: 'Feedback is a gift, not a criticism' },
-    { text: 'Progress over perfection' },
-    { text: 'Listen first, speak second' },
-    { text: 'Consistency builds mastery' }
+    { text: "Better Me + Better You = Better Us" },
+    { text: 'When Furious, Get Curious' },
+    { text: 'You Are Part Of A Tribe; Never Walk Alone' },
+    { text: 'Serve Before Being Served' },
+    { text: 'Stop Starting, Start Finishing' },
+    { text: 'Listen To Understand' },
+    { text: 'One Small Step at a Time' },
+    { text: "Be Quick But Don't Hurry" },
+    { text: "Leave It Better" },
+    { text: "Be The Driver or Navigator, Not A Passenger" },
+    { text: "Feedback Is The Breakfast of Champions" },
+    { text: "Facts Instead Assumptions" },
+    { text: 'Stop The Line' },
+    { text: 'Cutting Corners Hurts' }
   ])
 
   # Create initial system mantra item
