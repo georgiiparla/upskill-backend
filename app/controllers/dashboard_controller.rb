@@ -5,7 +5,7 @@ class DashboardController < ApplicationController
     # Ensure current system mantra exists and cycle if needed
     get_or_create_current_mantra_item
     
-    agenda_items = AgendaItem.includes(:editor, :mantra).order(due_date: :asc)
+    agenda_items = AgendaItem.includes(:editor, :mantra).order(is_system_mantra: :desc, due_date: :asc)
 
     agenda_items_json = agenda_items.map do |item|
       item.as_json.merge(
