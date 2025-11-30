@@ -2,7 +2,7 @@ puts "Seeding database with mock data..."
 
 ActiveRecord::Base.transaction do
   puts "   - Deleting old data..."
-  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, Quest, AgendaItem, User].each(&:destroy_all)
+  [ActivityStream, FeedbackSubmission, FeedbackRequest, Leaderboard, UserQuest, Quest, AgendaItem, User].each(&:destroy_all)
 
   puts "   - Creating mock users..."
   users = {}
@@ -12,14 +12,6 @@ ActiveRecord::Base.transaction do
   users[:jordan] = User.create!(username: 'Mock User Jordan', email: 'jordan@example.com', password: 'password123')
   users[:jamie]  = User.create!(username: 'Mock User Jamie',  email: 'jamie@example.com',  password: 'password123')
   users[:morgan] = User.create!(username: 'Mock User Morgan', email: 'morgan@example.com', password: 'password123')
-
-  puts "   - Creating mock quests..."
-  Quest.create!([
-    { code: 'create_feedback_request', title: 'First Feedback Request', description: 'Create your first feedback request', points: 50 },
-    { code: 'give_feedback',          title: 'Give Feedback',            description: 'Submit feedback to a colleague',        points: 50 },
-    { code: 'update_agenda',          title: 'Update Weekly Agenda',     description: 'Update the weekly agenda item',        points: 50 },
-    { code: 'like_feedback',          title: 'Spread the Love',          description: "Like someone else's feedback",        points: 50 }
-  ])
 
   # Create progression records for existing users (created above)
   User.find_each { |u| u.send(:initialize_progression) }
@@ -85,11 +77,40 @@ ActiveRecord::Base.transaction do
   ])
 
 
+  puts "   - Creating mantras..."
+
+  mantras = Mantra.create!([
+    { text: "Better Me + Better You = Better Us" },
+    { text: 'When Furious, Get Curious' },
+    { text: 'You Are Part Of A Tribe; Never Walk Alone' },
+    { text: 'Serve Before Being Served' },
+    { text: 'Stop Starting, Start Finishing' },
+    { text: 'Listen To Understand' },
+    { text: 'One Small Step at a Time' },
+    { text: "Be Quick But Don't Hurry" },
+    { text: "Leave It Better" },
+    { text: "Be The Driver or Navigator, Not A Passenger" },
+    { text: "Feedback Is The Breakfast of Champions" },
+    { text: "Facts Instead Assumptions" },
+    { text: 'Stop The Line' },
+    { text: 'Cutting Corners Hurts' }
+  ])
+
+  # Create initial system mantra item
+  AgendaItem.create!(
+    title: "Mantra of the week: #{mantras.first.text}",
+    icon_name: 'Star',
+    is_system_mantra: true,
+    mantra_id: mantras.first.id,
+    editor: nil,
+    due_date: Date.new(2025, 1, 1),
+    type: 'mantra'
+  )
+
   puts "   - Creating mock dashboard items..."
   AgendaItem.create!([
     { type: 'article', title: 'The Art of Giving Constructive Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
-    { type: 'article', title: 'My Feedback', category: 'Communication', due_date: '2025-08-18', editor: users[:alex], link: 'https://hbr.org/2018/05/the-right-way-to-respond-to-negative-feedback' },
-    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:alex] }
+    { type: 'article', title: 'Leading Without Authority', category: 'Leadership', due_date: '2025-08-20', editor: users[:casey] }
   ])
 
   puts "   - Creating new, structured mock activity stream..."
@@ -102,19 +123,21 @@ ActiveRecord::Base.transaction do
   )
 
   ActivityStream.create!(
-    actor: nil,
+    actor: users[:jordan],
     target: request3,
     event_type: 'feedback_closed',
     created_at: request3.updated_at
   )
 
-  agenda_item = AgendaItem.find_by!(title: 'My Feedback')
-  ActivityStream.create!(
-    actor: users[:casey],
-    target: agenda_item,
-    event_type: 'agenda_updated',
-    created_at: Time.now - 1.hour
-  )
+  agenda_item = AgendaItem.find_by(title: 'The Art of Giving Constructive Feedback')
+  if agenda_item
+    ActivityStream.create!(
+      actor: users[:casey],
+      target: agenda_item,
+      event_type: 'agenda_updated',
+      created_at: Time.now - 1.hour
+    )
+  end
 
 end
 

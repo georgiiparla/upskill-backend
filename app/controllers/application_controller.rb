@@ -78,6 +78,17 @@ class ApplicationController < Sinatra::Base
       halt 401, json({ error: 'Unauthorized' }) unless current_user
     end
 
+    def admin_protected!
+      halt 401, json({ error: 'Unauthorized' }) unless current_user
+      halt 403, json({ error: 'Access denied. Admin privileges required.' }) unless is_admin?(current_user)
+    end
+
+    def is_admin?(user)
+      return false unless user&.email
+      admin_emails = ENV['ADMIN_EMAILS']&.split(',')&.map(&:strip) || []
+      admin_emails.include?(user.email)
+    end
+
     # Safer find-or-create for SystemSetting to avoid a race where two
     # processes try to create the same key concurrently (Postgres / Supabase).
     def find_or_create_system_setting_safely(key)
@@ -129,32 +140,6 @@ class ApplicationController < Sinatra::Base
       end
     end
 
-    # Traffic-based job: Reset quest progress weekly (DB-backed coordination)
-    def run_quest_reset_job
-      return unless should_check_job?('quest_reset_job')
-      
-      key = 'last_quest_reset_run'
-
-      SystemSetting.transaction do
-        rec = find_or_create_system_setting_safely(key)
-        rec = SystemSetting.lock.find_by(id: rec.id)
-        last = (Time.parse(rec.value) rescue Time.now - 1.year)
-        return unless Time.now > last + AppConfig::QUEST_RESET_FREQUENCY.seconds
-
-        begin
-          settings.logger.info "Running weekly quest reset job..."
-
-          reset_count = UserQuest.where(completed: true).update_all(completed: false, progress: 0)
-          settings.logger.info "Reset #{reset_count} completed quest(s)."
-
-          rec.update!(value: Time.now.utc.iso8601)
-        rescue => e
-          settings.logger.error "Quest reset job failed: #{e.message}"
-          raise ActiveRecord::Rollback
-        end
-      end
-    end
-
     # Traffic-based job: Reset leaderboard points monthly (DB-backed coordination)
     def run_leaderboard_reset_job
       return unless should_check_job?('leaderboard_reset_job')
@@ -180,13 +165,33 @@ class ApplicationController < Sinatra::Base
         end
       end
     end
+
+    # Traffic-based job: Reset interval-based quests (DB-backed coordination)
+    def run_quest_reset_job
+      return unless should_check_job?('quest_reset_job')
+
+      Quest.where.not(reset_interval_seconds: nil).find_each do |quest|
+        begin
+          if quest.should_reset_globally?
+            settings.logger.info "Resetting quest: #{quest.title} (ID: #{quest.id})"
+            quest.reset_all_users!
+          end
+        rescue => e
+          settings.logger.error "Quest reset failed for quest #{quest.id}: #{e.message}"
+        end
+      end
+    end
   end
 
   before do
     # Traffic-based cron jobs - run on every request if enough time has passed
-    run_feedback_expiration_job
-    run_quest_reset_job
-    run_leaderboard_reset_job
+    begin
+      run_feedback_expiration_job
+      run_leaderboard_reset_job
+      run_quest_reset_job
+    rescue => e
+      settings.logger.error "Background job failed: #{e.class} - #{e.message}"
+    end
 
     @request_payload = {}
     body = request.body.read

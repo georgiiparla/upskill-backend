@@ -1,6 +1,6 @@
 class AdminController < ApplicationController
   get '/users' do
-    protected!
+    admin_protected!
     
     all_users = User.order(created_at: :desc)
     

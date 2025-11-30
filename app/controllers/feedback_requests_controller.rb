@@ -1,5 +1,5 @@
 require_relative '../helpers/anonymizer'
-require_relative '../helpers/quest_updater'
+require_relative '../middleware/quest_middleware'
 
 class FeedbackRequestsController < ApplicationController
   get '/' do
@@ -35,7 +35,7 @@ class FeedbackRequestsController < ApplicationController
 
     if feedback_request.save
       ActivityStream.create(actor: current_user, event_type: 'feedback_requested', target: feedback_request)
-      QuestUpdater.complete_for(current_user, 'create_feedback_request')
+      QuestMiddleware.trigger(current_user, 'FeedbackRequestsController#create')
       status 201
       json feedback_request.as_json.merge(
         requester_username: current_user.username,
@@ -158,6 +158,8 @@ class FeedbackRequestsController < ApplicationController
     end
 
     if feedback_request.destroy
+      # Revert the "Ask for Feedback" quest points
+      QuestMiddleware.revert(current_user, 'FeedbackRequestsController#create')
       status 200
       json({ message: 'Feedback request deleted successfully.' })
     else

@@ -8,3 +8,6 @@
 *.xml
 
 .env
+
+*.txt
+*.md

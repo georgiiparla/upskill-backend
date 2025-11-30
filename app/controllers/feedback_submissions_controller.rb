@@ -1,4 +1,4 @@
-require_relative '../helpers/quest_updater'
+require_relative '../middleware/quest_middleware'
 
 class FeedbackSubmissionsController < ApplicationController
   get '/' do
@@ -36,7 +36,7 @@ class FeedbackSubmissionsController < ApplicationController
     )
 
     if submission.save
-      QuestUpdater.complete_for(current_user, 'give_feedback')
+      QuestMiddleware.trigger(current_user, 'FeedbackSubmissionsController#create')
       status 201
       json submission.as_json.merge(authorName: current_user.username)
     else
@@ -55,6 +55,16 @@ class FeedbackSubmissionsController < ApplicationController
     end
 
     if submission.destroy
+      # If the user has no remaining feedback submissions, revert the 'give_feedback' one-time quest
+      begin
+        remaining = FeedbackSubmission.where(user_id: current_user.id).exists?
+        unless remaining
+          QuestMiddleware.revert(current_user, 'FeedbackSubmissionsController#create')
+        end
+      rescue => e
+        puts "Failed to revert give_feedback quest for user #{current_user.id}: #{e.message}"
+      end
+
       json({ message: 'Submission deleted successfully.' })
     else
       status 500
@@ -70,7 +80,8 @@ class FeedbackSubmissionsController < ApplicationController
 
     like = submission.feedback_submission_likes.new(user: current_user)
     if like.save
-      QuestUpdater.complete_for(current_user, 'like_feedback') unless submission.user_id == current_user.id
+      QuestMiddleware.trigger(current_user, 'FeedbackSubmissionsController#like') unless submission.user_id == current_user.id
+      QuestMiddleware.trigger(submission.user, 'FeedbackSubmissionsController#like_received') unless submission.user_id == current_user.id
       status 201
       json({ message: 'Liked successfully.' })
     else
@@ -87,6 +98,17 @@ class FeedbackSubmissionsController < ApplicationController
     like = submission.feedback_submission_likes.find_by(user: current_user)
     if like
       like.destroy
+
+      # Only revert quests if it's not a self-like
+      unless submission.user_id == current_user.id
+        begin
+          QuestMiddleware.revert(current_user, 'FeedbackSubmissionsController#like')
+          QuestMiddleware.revert(submission.user, 'FeedbackSubmissionsController#like_received')
+        rescue => e
+          puts "Failed to revert like quests for user #{current_user.id}: #{e.message}"
+        end
+      end
+
       json({ message: 'Unliked successfully.' })
     else
       status 404

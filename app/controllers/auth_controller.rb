@@ -1,5 +1,6 @@
 require 'google/apis/oauth2_v2'
 require 'google/api_client/client_secrets'
+require_relative '../middleware/quest_middleware'
 
 class AuthController < ApplicationController
 
@@ -82,6 +83,10 @@ class AuthController < ApplicationController
 
     # Generate JWT for the found/created user and redirect
     token = encode_token({ user_id: user.id })
+    
+    # Award daily login quest (5 points per login, once per 24 hours)
+    QuestMiddleware.trigger(user, 'AuthController#google_callback')
+    
     redirect "#{ENV['FRONTEND_URL']}/auth/callback?token=#{token}"
   end
 
@@ -91,7 +96,11 @@ class AuthController < ApplicationController
 
   get '/profile' do
     if current_user
-      json({ logged_in: true, user: current_user.slice(:id, :username, :email) })
+      json({ 
+        logged_in: true, 
+        user: current_user.slice(:id, :username, :email),
+        is_admin: is_admin?(current_user)
+      })
     else
       json({ logged_in: false })
     end
