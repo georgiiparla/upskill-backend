@@ -14,7 +14,7 @@ class DashboardController < ApplicationController
       )
     end
 
-    activity_stream = ActivityStream.includes(:actor, :target).order(created_at: :desc).limit(10)
+    activity_stream = ActivityStream.includes(:actor, :target).order(created_at: :desc).limit(6)
     
     activity_json = activity_stream.select { |a| a.target.present? }.map do |activity|
       target_info = case activity.target_type
