@@ -22,12 +22,11 @@ class ApplicationController < Sinatra::Base
     
     # In-memory cache for job check throttling (reduces DB queries)
     set :job_check_cache, {}
-    set :job_check_cache_ttl, 300 # seconds
+    set :job_check_cache_ttl, 10 
   end
   
   helpers do
 
-    # Check if enough time has passed since last check (in-memory cache to reduce DB queries)
     def should_check_job?(job_key)
       cache = settings.job_check_cache
       last_check = cache[job_key]
@@ -41,11 +40,11 @@ class ApplicationController < Sinatra::Base
     end
 
     def jwt_secret
-      ENV['JWT_SECRET'] || 'dfb4d95774044fb093def2b7f4788322b4d7cf9970ccbd0d3e516bb31fefa7e7a932fcd88e0da4d0a6dc5c02ccf2f5a26cc59d3899bd9492fd37ce4c1fe75393'
+      ENV['JWT_SECRET']
     end
 
     def encode_token(payload)
-      payload[:exp] = Time.now.to_i + 86400 
+      payload[:exp] = Time.now.to_i + (7 * 24 * 60 * 60) 
       JWT.encode(payload, jwt_secret)
     end
 
@@ -65,12 +64,9 @@ class ApplicationController < Sinatra::Base
     def current_user
       if decoded_token
         user_id = decoded_token[0]['user_id']
-        
         @current_user ||= User.find_by(id: user_id)
-
         settings.logger.info "User found via JWT: #{@current_user ? "Yes, ID: #{@current_user.id}" : 'No'}"
       end
-
       @current_user
     end
 
@@ -89,29 +85,25 @@ class ApplicationController < Sinatra::Base
       admin_emails.include?(user.email)
     end
 
-    # Safer find-or-create for SystemSetting to avoid a race where two
-    # processes try to create the same key concurrently (Postgres / Supabase).
+    # Safer find-or-create for SystemSetting
     def find_or_create_system_setting_safely(key)
       rec = SystemSetting.find_by(key: key)
       unless rec
         begin
           rec = SystemSetting.create!(key: key, value: (Time.now - 1.year).utc.iso8601)
         rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
-          # concurrent creator; fetch the existing record
           rec = SystemSetting.find_by(key: key)
         end
       end
       rec
     end
 
-    # Traffic-based job: Close expired feedback requests (DB-backed coordination)
+    # Traffic-based job: Close expired feedback requests
     def run_feedback_expiration_job
       return unless should_check_job?('expiration_job')
-      
       key = 'last_expiration_run'
 
       SystemSetting.transaction do
-        # create the setting safely if missing, then acquire FOR UPDATE on the row
         rec = find_or_create_system_setting_safely(key)
         rec = SystemSetting.lock.find_by(id: rec.id)
         last = (Time.parse(rec.value) rescue Time.now - 1.year)
@@ -119,19 +111,15 @@ class ApplicationController < Sinatra::Base
 
         begin
           settings.logger.info "Running job to close expired requests..."
-
           expired_requests = FeedbackRequest.where(status: 'pending').where('expires_at < ?', Time.now)
 
           if expired_requests.any?
             expired_requests.each do |req|
               ActivityStream.create(actor: nil, event_type: 'feedback_closed', target: req)
             end
-
             count = expired_requests.update_all(status: 'closed')
             settings.logger.info "Closed #{count} expired request(s)."
           end
-
-          # update last-run only on success
           rec.update!(value: Time.now.utc.iso8601)
         rescue => e
           settings.logger.error "Expiration job failed: #{e.message}"
@@ -140,10 +128,9 @@ class ApplicationController < Sinatra::Base
       end
     end
 
-    # Traffic-based job: Reset leaderboard points monthly (DB-backed coordination)
+    # Traffic-based job: Reset leaderboard points monthly
     def run_leaderboard_reset_job
       return unless should_check_job?('leaderboard_reset_job')
-      
       key = 'last_leaderboard_reset_run'
 
       SystemSetting.transaction do
@@ -154,10 +141,8 @@ class ApplicationController < Sinatra::Base
 
         begin
           settings.logger.info "Running monthly leaderboard reset job..."
-
-          reset_count = Leaderboard.update_all(points: 0)
+          reset_count = Leaderboard.update_all(points: 0, public_points: 0)
           settings.logger.info "Reset points for #{reset_count} user(s) in leaderboard."
-
           rec.update!(value: Time.now.utc.iso8601)
         rescue => e
           settings.logger.error "Leaderboard reset job failed: #{e.message}"
@@ -166,7 +151,30 @@ class ApplicationController < Sinatra::Base
       end
     end
 
-    # Traffic-based job: Reset interval-based quests (DB-backed coordination)
+    # Traffic-based job: Sync public leaderboard points
+    def run_leaderboard_sync_job
+      return unless should_check_job?('leaderboard_sync_job')
+      key = 'last_leaderboard_sync'
+
+      SystemSetting.transaction do
+        rec = find_or_create_system_setting_safely(key)
+        rec = SystemSetting.lock.find_by(id: rec.id)
+        last = (Time.parse(rec.value) rescue Time.now - 1.year)
+        
+        return unless Time.now > last + AppConfig::LEADERBOARD_SYNC_INTERVAL.seconds
+
+        begin
+          settings.logger.info "Running leaderboard sync job (Shadow Column Sync)..."
+          Leaderboard.update_all(['public_points = points, updated_at = ?', Time.now])
+          rec.update!(value: Time.now.utc.iso8601)
+        rescue => e
+          settings.logger.error "Leaderboard sync job failed: #{e.message}"
+          raise ActiveRecord::Rollback
+        end
+      end
+    end
+
+    # Traffic-based job: Reset interval-based quests
     def run_quest_reset_job
       return unless should_check_job?('quest_reset_job')
 
@@ -188,6 +196,7 @@ class ApplicationController < Sinatra::Base
     begin
       run_feedback_expiration_job
       run_leaderboard_reset_job
+      run_leaderboard_sync_job
       run_quest_reset_job
     rescue => e
       settings.logger.error "Background job failed: #{e.class} - #{e.message}"
