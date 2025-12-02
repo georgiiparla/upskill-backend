@@ -28,7 +28,14 @@ class AgendaItemsController < ApplicationController
     end
 
     if @request_payload.key?('link')
-      update_params[:link] = @request_payload['link']
+      new_link = @request_payload['link'].to_s.strip
+      
+      # FIX: Allow empty links (to clear them), but strictly validate non-empty links
+      if new_link.present? && !new_link.match?(/\Ahttps?:\/\//i)
+        halt 422, json({ errors: ["Link must start with http:// or https://"] })
+      end
+
+      update_params[:link] = new_link
     end
 
     if agenda_item.update(update_params)

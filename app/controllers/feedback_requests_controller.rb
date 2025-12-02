@@ -30,6 +30,17 @@ class FeedbackRequestsController < ApplicationController
   post '/' do
     protected!
 
+    # FIX: Add Rate Limiting to prevent point farming
+    # Allow max 5 requests per day (adjust number as needed)
+    daily_limit = 5
+    today_count = current_user.feedback_requests
+                              .where('created_at >= ?', Time.now.beginning_of_day)
+                              .count
+
+    if today_count >= daily_limit
+      halt 429, json({ error: "Daily limit reached. You can create up to #{daily_limit} requests per day." })
+    end
+
     request_params = @request_payload.slice('topic', 'details', 'tag', 'visibility')
     feedback_request = current_user.feedback_requests.build(request_params)
 
