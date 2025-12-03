@@ -32,7 +32,7 @@ class FeedbackRequestsController < ApplicationController
 
     # FIX: Add Rate Limiting to prevent point farming
     # Allow max 5 requests per day (adjust number as needed)
-    daily_limit = 5
+    daily_limit = AppConfig::MAX_DAILY_FEEDBACK_REQUESTS
     today_count = current_user.feedback_requests
                               .where('created_at >= ?', Time.now.beginning_of_day)
                               .count
