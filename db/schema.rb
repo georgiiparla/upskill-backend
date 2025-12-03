@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_11_17_194715) do
+ActiveRecord::Schema[7.2].define(version: 2025_12_02_000000) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -79,6 +79,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_17_194715) do
     t.integer "user_id"
     t.integer "points"
     t.text "badges"
+    t.integer "public_points", default: 0, null: false
+    t.datetime "created_at", default: "2025-12-01 12:45:17", null: false
+    t.datetime "updated_at", default: "2025-12-01 12:45:17", null: false
     t.index ["user_id"], name: "index_leaderboards_on_user_id"
   end
 
@@ -136,6 +139,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_17_194715) do
     t.datetime "updated_at", null: false
     t.datetime "last_triggered_at"
     t.datetime "first_awarded_at"
+    t.integer "points_snapshot", default: 0, null: false
     t.index ["quest_id"], name: "index_user_quests_on_quest_id"
     t.index ["user_id", "quest_id"], name: "index_user_quests_on_user_id_and_quest_id", unique: true
     t.index ["user_id"], name: "index_user_quests_on_user_id"

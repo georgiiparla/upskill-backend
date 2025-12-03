@@ -105,4 +105,23 @@ class AuthController < ApplicationController
       json({ logged_in: false })
     end
   end
+
+  # NEW: Stats endpoint for the Account page
+  get '/stats' do
+    protected!
+    
+    # Count likes given by current user
+    likes_given = FeedbackSubmissionLike.where(user_id: current_user.id).count
+    
+    # Count likes received on submissions authored by current user
+    # joins ensures we only count likes on valid submissions
+    likes_received = FeedbackSubmissionLike.joins(:feedback_submission)
+                                           .where(feedback_submissions: { user_id: current_user.id })
+                                           .count
+
+    json({ 
+      likes_given: likes_given, 
+      likes_received: likes_received 
+    })
+  end
 end

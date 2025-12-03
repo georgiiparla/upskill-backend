@@ -21,11 +21,18 @@ class QuestsController < ApplicationController
         has_new_progress = !last_viewed_quests || user_progress.last_triggered_at > last_viewed_quests
       end
 
+      # LOGIC FIX: Calculate seconds since trigger server-side to avoid client clock drift
+      seconds_since_trigger = nil
+      if user_progress&.last_triggered_at
+        seconds_since_trigger = (Time.now.utc - user_progress.last_triggered_at).to_i
+      end
+
       quest_data = quest.as_json.merge(
         'user_completed' => user_progress&.completed || false,
         'last_triggered_at' => user_progress&.last_triggered_at,
         'first_awarded_at' => user_progress&.first_awarded_at,
-        'has_new_progress' => has_new_progress
+        'has_new_progress' => has_new_progress,
+        'seconds_since_trigger' => seconds_since_trigger # New Field
       )
 
       # Add reset timing information for interval-based quests

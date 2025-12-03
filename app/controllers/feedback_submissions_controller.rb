@@ -74,45 +74,61 @@ class FeedbackSubmissionsController < ApplicationController
 
   post '/:id/like' do
     protected!
-    submission = FeedbackSubmission.find_by(id: params['id'])
-    halt 404, json({ error: 'Submission not found.' }) unless submission
+    submission = FeedbackSubmission.find_by(id: params[:id])
+    halt 404, json({ error: 'Submission not found' }) unless submission
 
+    # 1. Prevent Self-Likes
+    if submission.user_id == current_user.id
+       halt 422, json({ error: 'You cannot like your own feedback.' })
+    end
 
-    like = submission.feedback_submission_likes.new(user: current_user)
+    # 2. Rate Limit Check (Standard validation)
+    daily_likes_count = FeedbackSubmissionLike.where(user: current_user)
+                                              .where('created_at >= ?', Time.now.beginning_of_day)
+                                              .count
+    if daily_likes_count >= AppConfig::MAX_DAILY_LIKES
+      halt 422, json({ error: "Daily limit reached." })
+    end
+
+    # 3. Idempotent Creation
+    like = FeedbackSubmissionLike.find_or_initialize_by(user: current_user, feedback_submission: submission)
+    is_new_like = like.new_record? # Capture state before save
+
     if like.save
-      QuestMiddleware.trigger(current_user, 'FeedbackSubmissionsController#like') unless submission.user_id == current_user.id
-      QuestMiddleware.trigger(submission.user, 'FeedbackSubmissionsController#like_received') unless submission.user_id == current_user.id
-      status 201
-      json({ message: 'Liked successfully.' })
+      # Only award points if this is actually a NEW like
+      if is_new_like
+        QuestMiddleware.trigger(current_user, 'FeedbackSubmissionsController#like')
+        QuestMiddleware.trigger(submission.user, 'FeedbackSubmissionsController#like_received')
+      end
+      json({ success: true, likes: submission.likes.count })
     else
-      status 422
-      json({ errors: like.errors.full_messages })
+      halt 500, json({ error: 'Failed to like submission' })
     end
   end
 
+  # DELETE /:id/like
   delete '/:id/like' do
     protected!
-    submission = FeedbackSubmission.find_by(id: params['id'])
-    halt 404, json({ error: 'Submission not found.' }) unless submission
+    submission = FeedbackSubmission.find_by(id: params[:id])
+    halt 404, json({ error: 'Submission not found' }) unless submission
 
-    like = submission.feedback_submission_likes.find_by(user: current_user)
-    if like
-      like.destroy
+    current_count = submission.likes.count
 
-      # Only revert quests if it's not a self-like
-      unless submission.user_id == current_user.id
-        begin
-          QuestMiddleware.revert(current_user, 'FeedbackSubmissionsController#like')
-          QuestMiddleware.revert(submission.user, 'FeedbackSubmissionsController#like_received')
-        rescue => e
-          puts "Failed to revert like quests for user #{current_user.id}: #{e.message}"
-        end
+    # SECURITY FIX: Transaction + Locking to prevent race conditions
+    ActiveRecord::Base.transaction do
+      # Attempt to lock the specific like record
+      like = FeedbackSubmissionLike.lock.find_by(user: current_user, feedback_submission: submission)
+      
+      if like
+        like.destroy
+        # Revert Points (Symmetry) - uses atomic decrement in UserQuest
+        QuestMiddleware.revert(current_user, 'FeedbackSubmissionsController#like')
+        QuestMiddleware.revert(submission.user, 'FeedbackSubmissionsController#like_received')
+        
+        current_count -= 1
       end
-
-      json({ message: 'Unliked successfully.' })
-    else
-      status 404
-      json({ error: 'Like not found.' })
     end
+    
+    json({ success: true, likes: current_count })
   end
 end
