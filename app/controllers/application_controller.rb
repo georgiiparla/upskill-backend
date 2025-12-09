@@ -44,7 +44,7 @@ class ApplicationController < Sinatra::Base
     end
 
     def encode_token(payload)
-      payload[:exp] = Time.now.to_i + (7 * 24 * 60 * 60) 
+      payload[:exp] = Time.now.to_i + (24 * 60 * 60) 
       JWT.encode(payload, jwt_secret)
     end
 

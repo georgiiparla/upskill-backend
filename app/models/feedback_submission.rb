@@ -2,6 +2,8 @@ class FeedbackSubmission < ActiveRecord::Base
   belongs_to :user
   belongs_to :feedback_request, optional: true
 
+  validates :feedback_request_id, uniqueness: { scope: :user_id, message: "You have already submitted feedback for this request." }, allow_nil: true
+
   has_many :feedback_submission_likes, dependent: :destroy
   # Alias for cleaner controller code
   has_many :likes, class_name: 'FeedbackSubmissionLike', dependent: :destroy
