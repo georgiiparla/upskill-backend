@@ -99,15 +99,15 @@ class ApplicationController < Sinatra::Base
     end
 
     # Traffic-based job: Close expired feedback requests
-    def run_feedback_expiration_job
-      return unless should_check_job?('expiration_job')
+    def run_feedback_expiration_job(force: false)
+      return unless force || should_check_job?('expiration_job')
       key = 'last_expiration_run'
 
       SystemSetting.transaction do
         rec = find_or_create_system_setting_safely(key)
         rec = SystemSetting.lock.find_by(id: rec.id)
         last = (Time.parse(rec.value) rescue Time.now - 1.year)
-        return unless Time.now > last + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds
+        return unless force || (Time.now > last + AppConfig::EXPIRATION_JOB_FREQUENCY.seconds)
 
         begin
           settings.logger.info "Running job to close expired requests..."
@@ -129,15 +129,15 @@ class ApplicationController < Sinatra::Base
     end
 
     # Traffic-based job: Reset leaderboard points monthly
-    def run_leaderboard_reset_job
-      return unless should_check_job?('leaderboard_reset_job')
+    def run_leaderboard_reset_job(force: false)
+      return unless force || should_check_job?('leaderboard_reset_job')
       key = 'last_leaderboard_reset_run'
 
       SystemSetting.transaction do
         rec = find_or_create_system_setting_safely(key)
         rec = SystemSetting.lock.find_by(id: rec.id)
         last = (Time.parse(rec.value) rescue Time.now - 1.year)
-        return unless Time.now > last + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds
+        return unless force || (Time.now > last + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds)
 
         begin
           settings.logger.info "Running monthly leaderboard reset job..."
@@ -152,8 +152,8 @@ class ApplicationController < Sinatra::Base
     end
 
     # Traffic-based job: Sync public leaderboard points
-    def run_leaderboard_sync_job
-      return unless should_check_job?('leaderboard_sync_job')
+    def run_leaderboard_sync_job(force: false)
+      return unless force || should_check_job?('leaderboard_sync_job')
       key = 'last_leaderboard_sync'
 
       SystemSetting.transaction do
@@ -161,7 +161,7 @@ class ApplicationController < Sinatra::Base
         rec = SystemSetting.lock.find_by(id: rec.id)
         last = (Time.parse(rec.value) rescue Time.now - 1.year)
         
-        return unless Time.now > last + AppConfig::LEADERBOARD_SYNC_INTERVAL.seconds
+        return unless force || (Time.now > last + AppConfig::LEADERBOARD_SYNC_INTERVAL.seconds)
 
         begin
           settings.logger.info "Running leaderboard sync job (Shadow Column Sync)..."
@@ -175,12 +175,12 @@ class ApplicationController < Sinatra::Base
     end
 
     # Traffic-based job: Reset interval-based quests
-    def run_quest_reset_job
-      return unless should_check_job?('quest_reset_job')
+    def run_quest_reset_job(force: false)
+      return unless force || should_check_job?('quest_reset_job')
 
       Quest.where.not(reset_interval_seconds: nil).find_each do |quest|
         begin
-          if quest.should_reset_globally?
+          if force || quest.should_reset_globally?
             settings.logger.info "Resetting quest: #{quest.title} (ID: #{quest.id})"
             quest.reset_all_users!
           end
