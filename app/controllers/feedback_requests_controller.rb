@@ -2,24 +2,33 @@ require_relative '../helpers/anonymizer'
 require_relative '../middleware/quest_middleware'
 
 class FeedbackRequestsController < ApplicationController
+  # GET /
+  # Returns requests where current_user is requester OR pair
   get '/' do
     protected!
 
-    all_requests = FeedbackRequest.includes(:requester).order(created_at: :desc)
+    # Efficient query using OR condition
+    all_requests = FeedbackRequest.includes(:requester, :pair)
+                                  .where('requester_id = ? OR pair_id = ?', current_user.id, current_user.id)
+                                  .order(created_at: :desc)
 
     if params['search'] && !params['search'].empty?
       search_term = "%#{params['search'].downcase}%"
-      all_requests = all_requests.joins(:requester).where(
+      # Search in topic, tag, OR requester username, OR pair username
+      # Need joins to filter by username
+      all_requests = all_requests.left_joins(:requester, :pair).where(
         'lower(feedback_requests.topic) LIKE ? OR ' +
         'lower(feedback_requests.tag) LIKE ? OR ' +
-        'lower(users.username) LIKE ?',
-        search_term, search_term, search_term
+        'lower(users.username) LIKE ? OR ' + 
+        'lower(pairs_feedback_requests.username) LIKE ?',
+        search_term, search_term, search_term, search_term
       )
     end
 
     requests_json = all_requests.map do |request|
       request.as_json.merge(
         requester_username: request.requester.username,
+        pair_username: request.pair&.username,
         isOwner: request.requester_id == current_user.id
       )
     end
@@ -30,8 +39,7 @@ class FeedbackRequestsController < ApplicationController
   post '/' do
     protected!
 
-    # FIX: Add Rate Limiting to prevent point farming
-    # Allow max 5 requests per day (adjust number as needed)
+    # FIX: Rate Limiting
     daily_limit = AppConfig::MAX_DAILY_FEEDBACK_REQUESTS
     today_count = current_user.feedback_requests
                               .where('created_at >= ?', Time.now.beginning_of_day)
@@ -54,44 +62,28 @@ class FeedbackRequestsController < ApplicationController
       end
     end
 
-    transaction_error = nil
+    # Create Single Shared Request
+    feedback_request = current_user.feedback_requests.build(request_params)
+    feedback_request.pair = pair_user if pair_user
 
-    ActiveRecord::Base.transaction do
-      feedback_request = current_user.feedback_requests.build(request_params)
+    if feedback_request.save
+      ActivityStream.create(actor: current_user, event_type: 'feedback_requested', target: feedback_request)
+      QuestMiddleware.trigger(current_user, 'FeedbackRequestsController#create')
 
-      if feedback_request.save
-        ActivityStream.create(actor: current_user, event_type: 'feedback_requested', target: feedback_request)
-        QuestMiddleware.trigger(current_user, 'FeedbackRequestsController#create')
-
-        if pair_user
-          pair_request_params = request_params.dup
-          # Append pair username to tag to ensure uniqueness
-          pair_request_params['tag'] = "#{request_params['tag']}-#{pair_user.username}"
-          
-          pair_request = pair_user.feedback_requests.build(pair_request_params)
-          if pair_request.save
-            ActivityStream.create(actor: pair_user, event_type: 'feedback_requested', target: pair_request)
-            QuestMiddleware.trigger(pair_user, 'FeedbackRequestsController#create')
-          else
-            # If pair request fails, rollback everything
-            transaction_error = "Failed to create pair request: #{pair_request.errors.full_messages.join(', ')}"
-            raise ActiveRecord::Rollback
-          end
-        end
-
-        status 201
-        json feedback_request.as_json.merge(
-          requester_username: current_user.username,
-          isOwner: true
-        )
-      else
-        status 422
-        json({ errors: feedback_request.errors.full_messages })
+      if pair_user
+        ActivityStream.create(actor: pair_user, event_type: 'feedback_requested', target: feedback_request)
+        QuestMiddleware.trigger(pair_user, 'FeedbackRequestsController#create')
       end
-    end
 
-    if transaction_error
-      halt 422, json({ error: transaction_error })
+      status 201
+      json feedback_request.as_json.merge(
+        requester_username: current_user.username,
+        pair_username: pair_user&.username,
+        isOwner: true
+      )
+    else
+      status 422
+      json({ errors: feedback_request.errors.full_messages })
     end
   end
 

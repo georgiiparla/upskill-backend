@@ -1,5 +1,6 @@
 class FeedbackRequest < ActiveRecord::Base
-  belongs_to :requester, class_name: 'User'
+  belongs_to :requester, class_name: 'User', foreign_key: 'requester_id'
+  belongs_to :pair, class_name: 'User', foreign_key: 'pair_id', optional: true
   has_many :feedback_submissions, dependent: :destroy
 
   has_many :activity_streams, as: :target, dependent: :destroy

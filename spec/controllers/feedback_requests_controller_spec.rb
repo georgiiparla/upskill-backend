@@ -10,6 +10,39 @@ RSpec.describe FeedbackRequestsController do
   let(:token) { JWT.encode({user_id: user.id}, ENV['JWT_SECRET'] || 'test_secret') }
   let(:headers) { { 'HTTP_AUTHORIZATION' => "Bearer #{token}", 'CONTENT_TYPE' => 'application/json' } }
 
+  describe "GET /" do
+    context "when a user is a pair on a request" do
+      before do
+        FeedbackRequest.create!(
+          requester: user,
+          pair: pair_user,
+          topic: 'Shared Topic',
+          details: 'Details',
+          tag: 'shared-tag',
+          visibility: 'public'
+        )
+      end
+
+      it "returns the request for the pair user" do
+        pair_token = JWT.encode({user_id: pair_user.id}, ENV['JWT_SECRET'] || 'test_secret')
+        pair_headers = { 'HTTP_AUTHORIZATION' => "Bearer #{pair_token}", 'CONTENT_TYPE' => 'application/json' }
+
+        get '/', {}, pair_headers
+        
+        expect(last_response.status).to eq(200)
+        body = JSON.parse(last_response.body)
+        expect(body['items'].length).to eq(1)
+        expect(body['items'][0]['topic']).to eq('Shared Topic')
+        expect(body['items'][0]['pair_username']).to eq(pair_user.username)
+        # Verify isOwner is false for pair (conceptually true for viewing, but technical ownership is requester)
+        # Actually logic is `isOwner: request.requester_id == current_user.id`
+        # So for pair, isOwner is false? The UI might treat 'isOwner' as 'can edit'. 
+        # For now, let's just verify visibility.
+        expect(body['items'][0]['isOwner']).to eq(false) 
+      end
+    end
+  end
+
   describe "POST /" do
     let(:valid_params) do
       {
@@ -32,28 +65,19 @@ RSpec.describe FeedbackRequestsController do
     context "when creating a request with a pair requester" do
       let(:params_with_pair) { valid_params.merge(pair_username: pair_user.username) }
 
-      it "creates two feedback requests (one for requester, one for pair)" do
+      it "creates a single feedback request associated with both users" do
         post '/', params_with_pair.to_json, headers
         expect(last_response.status).to eq(201)
-        expect(FeedbackRequest.count).to eq(2)
+        expect(FeedbackRequest.count).to eq(1)
 
-        # Check user's request
-        user_req = FeedbackRequest.find_by(requester_id: user.id)
-        expect(user_req).not_to be_nil
-        expect(user_req.topic).to eq('My Code Review')
-
-        # Check pair's request
-        pair_req = FeedbackRequest.find_by(requester_id: pair_user.id)
-        expect(pair_req).not_to be_nil
-        expect(pair_req.topic).to eq('My Code Review')
-        
-        # Ensure tags are unique (since tag must be unique)
-        # The implementation should handle tag uniqueness for the pair, likely by appending something
-        # or generating a new tag. For now we assume the implementation will handle it.
-        # But wait, if we send 'tag', validation says `validates :tag, presence: true, uniqueness: true`
-        # So the second request MUST have a different tag.
-        expect(user_req.tag).not_to eq(pair_req.tag)
-        expect(pair_req.tag).to include(valid_params[:tag])
+        request = FeedbackRequest.first
+        expect(request.requester_id).to eq(user.id)
+        # We need to access the underlying column or relation. 
+        # Since I haven't run migration yet, calling .pair_id will raise NoMethodError, which is a valid failure.
+        # But to be clean, let's verify response or attributes
+        expect(request.respond_to?(:pair_id)).to be_truthy # This will fail
+        expect(request.pair_id).to eq(pair_user.id)
+        expect(request.topic).to eq('My Code Review')
       end
 
       it "grants points/triggers middleware for both users" do
@@ -94,26 +118,19 @@ RSpec.describe FeedbackRequestsController do
 
 
     context "Edge Cases and Security" do
-      it "rolls back the transaction if pair request creation fails" do
-        # Create a request for the pair user that will cause a tag collision
-        # The code generates tag: "#{params[:tag]}-#{pair_user.username}"
-        expected_pair_tag = "#{valid_params[:tag]}-#{pair_user.username}"
-        FeedbackRequest.create!(
-          requester: pair_user,
-          topic: 'Collision Stopper',
-          tag: expected_pair_tag,
-          visibility: 'public'
-        )
+      let(:params_with_pair) { valid_params.merge(pair_username: pair_user.username) }
 
+      it "handles failures gracefully" do
+        # With single request model, transaction rollback for "pair request" is essentially just "save failed".
+        # We can simulate save failure by making params invalid.
+        # But verify checking specific edge case: Validating pair doesn't break basic request save flow strangely?
+        # Actually, if save fails, count stays same.
+        
         initial_count = FeedbackRequest.count
+        invalid_params = params_with_pair.merge(topic: '') # Invalid topic
+        post '/', invalid_params.to_json, headers
         
-        # Try to create a pair request that would generate the same tag
-        params = valid_params.merge(pair_username: pair_user.username)
-        post '/', params.to_json, headers
-
-        expect(last_response.status).to eq(500).or eq(422) 
-        
-        # Verify no changes in DB
+        expect(last_response.status).to eq(422)
         expect(FeedbackRequest.count).to eq(initial_count)
       end
 
