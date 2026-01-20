@@ -176,4 +176,76 @@ RSpec.describe AuthController do
       end
     end
   end
+
+  describe "POST /logout" do
+    it "returns a success message" do
+      post '/logout'
+      expect(last_response.status).to eq(200)
+      expect(JSON.parse(last_response.body)).to include('message' => 'Logout acknowledged')
+    end
+  end
+
+  describe "GET /profile" do
+    context "when authenticated" do
+      let(:user) { double("User", id: 1, username: "tester", email: "test@test.com") }
+
+      before do
+        allow_any_instance_of(AuthController).to receive(:current_user).and_return(user)
+        allow_any_instance_of(AuthController).to receive(:is_admin?).with(user).and_return(false)
+        allow(user).to receive(:slice).with(:id, :username, :email).and_return({ id: 1, username: 'tester', email: 'test@test.com' })
+      end
+
+      it "returns user info" do
+        get '/profile'
+        expect(last_response.status).to eq(200)
+        data = JSON.parse(last_response.body)
+        expect(data['logged_in']).to be true
+        expect(data['user']['username']).to eq('tester')
+      end
+    end
+
+    context "when not authenticated" do
+      before do
+        allow_any_instance_of(AuthController).to receive(:current_user).and_return(nil)
+      end
+
+      it "returns logged_in false" do
+        get '/profile'
+        expect(last_response.status).to eq(200)
+        expect(JSON.parse(last_response.body)['logged_in']).to be false
+      end
+    end
+  end
+  
+  describe "GET /stats" do
+    context "when authenticated" do
+      let(:user) { double("User", id: 1) }
+      
+      before do
+        allow_any_instance_of(AuthController).to receive(:current_user).and_return(user)
+        # Mock database calls
+        allow(FeedbackSubmissionLike).to receive_message_chain(:where, :count).and_return(5)
+        allow(FeedbackSubmissionLike).to receive_message_chain(:joins, :where, :count).and_return(10)
+      end
+      
+      it "returns user stats" do
+        get '/stats'
+        expect(last_response.status).to eq(200)
+        data = JSON.parse(last_response.body)
+        expect(data['likes_given']).to eq(5)
+        expect(data['likes_received']).to eq(10)
+      end
+    end
+    
+    context "when not authenticated" do
+      before do
+        allow_any_instance_of(AuthController).to receive(:current_user).and_return(nil)
+      end
+      
+      it "returns 401" do
+        get '/stats'
+        expect(last_response.status).to eq(401)
+      end
+    end
+  end
 end

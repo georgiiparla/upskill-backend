@@ -33,12 +33,27 @@ RSpec.describe FeedbackRequestsController do
         body = JSON.parse(last_response.body)
         expect(body['items'].length).to eq(1)
         expect(body['items'][0]['topic']).to eq('Shared Topic')
-        expect(body['items'][0]['pair_username']).to eq(pair_user.username)
-        # Verify isOwner is false for pair (conceptually true for viewing, but technical ownership is requester)
-        # Actually logic is `isOwner: request.requester_id == current_user.id`
-        # So for pair, isOwner is false? The UI might treat 'isOwner' as 'can edit'. 
-        # For now, let's just verify visibility.
-        expect(body['items'][0]['isOwner']).to eq(false) 
+        expect(body['items'][0]['isOwner']).to eq(true) 
+      end
+    end
+    
+    context "Visibility Regression Check" do
+      it "allows User B to see User A's PUBLIC solo request" do
+        # Create a public request by User A (user)
+        FeedbackRequest.create!(requester: user, topic: 'Public Solo', details: 'D', tag: 'pub-solo', visibility: 'public')
+        
+        # Log in as User B (pair_user)
+        pair_token = JWT.encode({user_id: pair_user.id}, ENV['JWT_SECRET'] || 'test_secret')
+        pair_headers = { 'HTTP_AUTHORIZATION' => "Bearer #{pair_token}", 'CONTENT_TYPE' => 'application/json' }
+        
+        get '/', {}, pair_headers
+        
+        expect(last_response.status).to eq(200)
+        body = JSON.parse(last_response.body)
+        
+        # User B should see the public request
+        # CURRENTLY: This fails because the query filters strictly by requester/pair match
+        expect(body['items'].any? { |r| r['topic'] == 'Public Solo' }).to be true
       end
     end
   end
@@ -147,6 +162,150 @@ RSpec.describe FeedbackRequestsController do
         expect(last_response.status).to eq(429)
         expect(FeedbackRequest.count).to eq(0)
       end
+    end
+
+    context "Pair Permissions (Regression Tests)" do
+      let!(:shared_request) do
+        FeedbackRequest.create!(
+          requester: user,
+          pair: pair_user,
+          topic: 'Pair Can Manage?',
+          details: 'We shall see',
+          tag: 'pair-manage-test',
+          visibility: 'public'
+        )
+      end
+
+      it "allows the pair user to DELETE the shared request" do
+        pair_token = JWT.encode({user_id: pair_user.id}, ENV['JWT_SECRET'] || 'test_secret')
+        pair_headers = { 'HTTP_AUTHORIZATION' => "Bearer #{pair_token}", 'CONTENT_TYPE' => 'application/json' }
+
+        delete "/#{shared_request.id}", {}, pair_headers
+        
+        # CURRENTLY: Expecting 403 (Failure)
+        # DESIRED: Expecting 200 (Success)
+        expect(last_response.status).to eq(200)
+        expect(FeedbackRequest.find_by(id: shared_request.id)).to be_nil
+      end
+
+      it "allows the pair user to CLOSE the shared request" do
+        pair_token = JWT.encode({user_id: pair_user.id}, ENV['JWT_SECRET'] || 'test_secret')
+        pair_headers = { 'HTTP_AUTHORIZATION' => "Bearer #{pair_token}", 'CONTENT_TYPE' => 'application/json' }
+
+        patch "/#{shared_request.id}", { status: 'closed' }.to_json, pair_headers
+        
+        expect(last_response.status).to eq(200)
+        expect(shared_request.reload.status).to eq('closed')
+      end
+
+      context "Points Reversion Logic" do
+        it "reverts points for BOTH requester and pair when PAIR deletes" do
+          pair_token = JWT.encode({user_id: pair_user.id}, ENV['JWT_SECRET'] || 'test_secret')
+          pair_headers = { 'HTTP_AUTHORIZATION' => "Bearer #{pair_token}", 'CONTENT_TYPE' => 'application/json' }
+          
+          # Spy on QuestMiddleware
+          allow(QuestMiddleware).to receive(:revert)
+          
+          delete "/#{shared_request.id}", {}, pair_headers
+          
+          expect(last_response.status).to eq(200)
+          
+          # Verify Reversion called for Pair (the deleter)
+          expect(QuestMiddleware).to have_received(:revert).with(pair_user, 'FeedbackRequestsController#create')
+          
+          # Verify Reversion called for Requester (the other party) - THIS SHOULD FAIL CURRENTLY
+          expect(QuestMiddleware).to have_received(:revert).with(user, 'FeedbackRequestsController#create')
+        end
+
+        it "reverts points for BOTH requester and pair when REQUESTER deletes" do
+           # Spy on QuestMiddleware
+           allow(QuestMiddleware).to receive(:revert)
+           
+           delete "/#{shared_request.id}", {}, headers # headers is for 'user' (owner)
+           
+           expect(last_response.status).to eq(200)
+           
+           # Verify Reversion called for Requester (the deleter)
+           expect(QuestMiddleware).to have_received(:revert).with(user, 'FeedbackRequestsController#create')
+           
+           # Verify Reversion called for Pair - THIS SHOULD FAIL CURRENTLY
+           expect(QuestMiddleware).to have_received(:revert).with(pair_user, 'FeedbackRequestsController#create')
+        end
+
+        it "handles deletion gracefully even if Pair user no longer exists" do
+           # Simulate Pair user being deleted from DB but request remaining (unlikely with FK constraints, but possible logic flaw)
+           # Or just force feedback_request.pair to return nil during destroy
+           
+           # Better: Create a request without a pair (or user was deleted)
+           # Since we can't easily mock the association call inside the controller without heavy mocking, 
+           # let's just ensure standard request deletion only calls revert once.
+           
+           solo_request = FeedbackRequest.create!(requester: user, topic: 'Solo', details: 'D', tag: 'solo', visibility: 'public')
+           
+           allow(QuestMiddleware).to receive(:revert)
+           
+           delete "/#{solo_request.id}", {}, headers
+           
+           expect(last_response.status).to eq(200)
+           expect(QuestMiddleware).to have_received(:revert).with(user, 'FeedbackRequestsController#create').once
+           # And NOT with nil or anything else
+           expect(QuestMiddleware).to have_received(:revert).exactly(1).times
+        end
+      end
+    end
+  end
+
+  describe "POST /" do
+    it "returns 422 if trying to pair with self" do
+      request_data = {
+        topic: 'Self Pair',
+        details: 'Details',
+        tag: 'self',
+        visibility: 'public',
+        pair_username: user.username
+      }
+      
+      token = JWT.encode({user_id: user.id}, ENV['JWT_SECRET'] || 'test_secret')
+      headers = { 'HTTP_AUTHORIZATION' => "Bearer #{token}", 'CONTENT_TYPE' => 'application/json' }
+      
+      post '/', request_data.to_json, headers
+      expect(last_response.status).to eq(422)
+    end
+
+    it "returns 404 if pair user does not exist" do
+      request_data = {
+        topic: 'Ghost Pair',
+        details: 'Details',
+        tag: 'ghost',
+        visibility: 'public',
+        pair_username: 'non_existent_user_123'
+      }
+      
+      token = JWT.encode({user_id: user.id}, ENV['JWT_SECRET'] || 'test_secret')
+      headers = { 'HTTP_AUTHORIZATION' => "Bearer #{token}", 'CONTENT_TYPE' => 'application/json' }
+      
+      expect {
+        post '/', request_data.to_json, headers
+      }.not_to change(FeedbackRequest, :count)
+      
+      expect(last_response.status).to eq(404)
+    end
+    
+    it "returns 404 if pair_username is an empty string" do
+      # This confirms that explicit empty string is treated as an attempt to pair, not ignored
+      request_data = {
+        topic: 'Empty String Pair',
+        details: 'Details',
+        tag: 'empty',
+        visibility: 'public',
+        pair_username: '' 
+      }
+      
+      token = JWT.encode({user_id: user.id}, ENV['JWT_SECRET'] || 'test_secret')
+      headers = { 'HTTP_AUTHORIZATION' => "Bearer #{token}", 'CONTENT_TYPE' => 'application/json' }
+      
+      post '/', request_data.to_json, headers
+      expect(last_response.status).to eq(404) # Current logic: "" is truthy -> find_by -> nil -> 404
     end
   end
 end
