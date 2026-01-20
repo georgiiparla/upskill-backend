@@ -59,7 +59,7 @@ class FeedbackRequestsController < ApplicationController
     pair_username = @request_payload['pair_username']
     pair_user = nil
 
-    if pair_username
+    if pair_username.present?
       pair_user = User.find_by(username: pair_username)
       if !pair_user
         halt 404, json({ error: "Pair user not found" })

@@ -291,8 +291,8 @@ RSpec.describe FeedbackRequestsController do
       expect(last_response.status).to eq(404)
     end
     
-    it "returns 404 if pair_username is an empty string" do
-      # This confirms that explicit empty string is treated as an attempt to pair, not ignored
+    it "creates a solo request if pair_username is an empty string" do
+      # Empty string should be treated as "no pair", not as a lookup attempt
       request_data = {
         topic: 'Empty String Pair',
         details: 'Details',
@@ -305,7 +305,98 @@ RSpec.describe FeedbackRequestsController do
       headers = { 'HTTP_AUTHORIZATION' => "Bearer #{token}", 'CONTENT_TYPE' => 'application/json' }
       
       post '/', request_data.to_json, headers
-      expect(last_response.status).to eq(404) # Current logic: "" is truthy -> find_by -> nil -> 404
+      expect(last_response.status).to eq(201)
+      expect(FeedbackRequest.last.pair_id).to be_nil
+    end
+  end
+
+  describe "GET /:tag" do
+    let!(:public_request) do
+      FeedbackRequest.create!(
+        requester: user,
+        topic: 'Public Request',
+        details: 'Details',
+        tag: 'public-tag',
+        visibility: 'public'
+      )
+    end
+
+    let!(:private_request) do
+      FeedbackRequest.create!(
+        requester: user,
+        topic: 'Private Request',
+        details: 'Details',
+        tag: 'private-tag',
+        visibility: 'requester_only'
+      )
+    end
+
+    it "returns request data with submissions for owner" do
+      # Create a submission
+      FeedbackSubmission.create!(
+        feedback_request: public_request,
+        user: pair_user,
+        content: 'Great work!',
+        sentiment: 3
+      )
+
+      get "/#{public_request.tag}", {}, headers
+
+      expect(last_response.status).to eq(200)
+      body = JSON.parse(last_response.body)
+      expect(body['requestData']['topic']).to eq('Public Request')
+      expect(body['requestData']['isOwner']).to eq(true)
+      expect(body['submissions'].length).to eq(1)
+    end
+
+    it "returns only user's own submissions for private requests when not owner" do
+      # Create submissions from different users
+      FeedbackSubmission.create!(
+        feedback_request: private_request,
+        user: pair_user,
+        content: 'My feedback',
+        sentiment: 3
+      )
+      
+      other_user = User.create!(username: 'other', email: 'other@example.com', password: 'password')
+      FeedbackSubmission.create!(
+        feedback_request: private_request,
+        user: other_user,
+        content: 'Other feedback',
+        sentiment: 3
+      )
+
+      # Login as pair_user (not owner)
+      pair_token = JWT.encode({user_id: pair_user.id}, ENV['JWT_SECRET'] || 'test_secret')
+      pair_headers = { 'HTTP_AUTHORIZATION' => "Bearer #{pair_token}", 'CONTENT_TYPE' => 'application/json' }
+
+      get "/#{private_request.tag}", {}, pair_headers
+
+      expect(last_response.status).to eq(200)
+      body = JSON.parse(last_response.body)
+      # Should only see their own submission, not the other user's
+      expect(body['submissions'].length).to eq(1)
+      expect(body['submissions'][0]['content']).to include('My feedback')
+    end
+
+    it "returns 404 for non-existent tag" do
+      get "/non-existent-tag", {}, headers
+
+      expect(last_response.status).to eq(404)
+      body = JSON.parse(last_response.body)
+      expect(body['error']).to include('not found')
+    end
+
+    it "allows public requests to be viewed by any user" do
+      pair_token = JWT.encode({user_id: pair_user.id}, ENV['JWT_SECRET'] || 'test_secret')
+      pair_headers = { 'HTTP_AUTHORIZATION' => "Bearer #{pair_token}", 'CONTENT_TYPE' => 'application/json' }
+
+      get "/#{public_request.tag}", {}, pair_headers
+
+      expect(last_response.status).to eq(200)
+      body = JSON.parse(last_response.body)
+      expect(body['requestData']['topic']).to eq('Public Request')
+      expect(body['requestData']['isOwner']).to eq(false)
     end
   end
 end
