@@ -90,5 +90,47 @@ RSpec.describe FeedbackRequestsController do
         expect(body['error']).to include('Cannot pair with yourself')
       end
     end
+
+
+
+    context "Edge Cases and Security" do
+      it "rolls back the transaction if pair request creation fails" do
+        # Create a request for the pair user that will cause a tag collision
+        # The code generates tag: "#{params[:tag]}-#{pair_user.username}"
+        expected_pair_tag = "#{valid_params[:tag]}-#{pair_user.username}"
+        FeedbackRequest.create!(
+          requester: pair_user,
+          topic: 'Collision Stopper',
+          tag: expected_pair_tag,
+          visibility: 'public'
+        )
+
+        initial_count = FeedbackRequest.count
+        
+        # Try to create a pair request that would generate the same tag
+        params = valid_params.merge(pair_username: pair_user.username)
+        post '/', params.to_json, headers
+
+        expect(last_response.status).to eq(500).or eq(422) 
+        
+        # Verify no changes in DB
+        expect(FeedbackRequest.count).to eq(initial_count)
+      end
+
+      it "enforces rate limits for the requester" do
+        # Simulate limit reached
+
+        # We need to stub it correctly because it's a constant. 
+        # RSpec constant stubbing: stub_const("AppConfig::MAX_DAILY_FEEDBACK_REQUESTS", 0)
+        stub_const("AppConfig::MAX_DAILY_FEEDBACK_REQUESTS", 0)
+
+        params = valid_params.merge(pair_username: pair_user.username)
+        post '/', params.to_json, headers
+
+        expect(last_response.status).to eq(429)
+        expect(FeedbackRequest.count).to eq(0)
+      end
+    end
   end
 end
+

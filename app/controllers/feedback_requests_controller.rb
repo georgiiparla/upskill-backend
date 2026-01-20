@@ -54,6 +54,8 @@ class FeedbackRequestsController < ApplicationController
       end
     end
 
+    transaction_error = nil
+
     ActiveRecord::Base.transaction do
       feedback_request = current_user.feedback_requests.build(request_params)
 
@@ -72,7 +74,8 @@ class FeedbackRequestsController < ApplicationController
             QuestMiddleware.trigger(pair_user, 'FeedbackRequestsController#create')
           else
             # If pair request fails, rollback everything
-            raise ActiveRecord::Rollback, "Failed to create pair request: #{pair_request.errors.full_messages.join(', ')}"
+            transaction_error = "Failed to create pair request: #{pair_request.errors.full_messages.join(', ')}"
+            raise ActiveRecord::Rollback
           end
         end
 
@@ -85,6 +88,10 @@ class FeedbackRequestsController < ApplicationController
         status 422
         json({ errors: feedback_request.errors.full_messages })
       end
+    end
+
+    if transaction_error
+      halt 422, json({ error: transaction_error })
     end
   end
 
