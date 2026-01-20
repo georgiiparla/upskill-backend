@@ -42,19 +42,49 @@ class FeedbackRequestsController < ApplicationController
     end
 
     request_params = @request_payload.slice('topic', 'details', 'tag', 'visibility')
-    feedback_request = current_user.feedback_requests.build(request_params)
+    pair_username = @request_payload['pair_username']
+    pair_user = nil
 
-    if feedback_request.save
-      ActivityStream.create(actor: current_user, event_type: 'feedback_requested', target: feedback_request)
-      QuestMiddleware.trigger(current_user, 'FeedbackRequestsController#create')
-      status 201
-      json feedback_request.as_json.merge(
-        requester_username: current_user.username,
-        isOwner: true
-      )
-    else
-      status 422
-      json({ errors: feedback_request.errors.full_messages })
+    if pair_username
+      pair_user = User.find_by(username: pair_username)
+      if !pair_user
+        halt 404, json({ error: "Pair user not found" })
+      elsif pair_user.id == current_user.id
+        halt 422, json({ error: "Cannot pair with yourself" })
+      end
+    end
+
+    ActiveRecord::Base.transaction do
+      feedback_request = current_user.feedback_requests.build(request_params)
+
+      if feedback_request.save
+        ActivityStream.create(actor: current_user, event_type: 'feedback_requested', target: feedback_request)
+        QuestMiddleware.trigger(current_user, 'FeedbackRequestsController#create')
+
+        if pair_user
+          pair_request_params = request_params.dup
+          # Append pair username to tag to ensure uniqueness
+          pair_request_params['tag'] = "#{request_params['tag']}-#{pair_user.username}"
+          
+          pair_request = pair_user.feedback_requests.build(pair_request_params)
+          if pair_request.save
+            ActivityStream.create(actor: pair_user, event_type: 'feedback_requested', target: pair_request)
+            QuestMiddleware.trigger(pair_user, 'FeedbackRequestsController#create')
+          else
+            # If pair request fails, rollback everything
+            raise ActiveRecord::Rollback, "Failed to create pair request: #{pair_request.errors.full_messages.join(', ')}"
+          end
+        end
+
+        status 201
+        json feedback_request.as_json.merge(
+          requester_username: current_user.username,
+          isOwner: true
+        )
+      else
+        status 422
+        json({ errors: feedback_request.errors.full_messages })
+      end
     end
   end
 
