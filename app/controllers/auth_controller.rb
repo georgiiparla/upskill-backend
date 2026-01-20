@@ -18,17 +18,27 @@ class AuthController < ApplicationController
     authorizer = client_secrets.to_authorization
     authorizer.scope = ['email', 'profile']
     
-    # Store the state in the session to prevent CSRF attacks
-    session[:state] = SecureRandom.hex(16)
-    authorizer.state = session[:state]
+    # Stateless State Generation: Encode random nonce + expiry in JWT
+    state_payload = { 
+      nonce: SecureRandom.hex(16), 
+      exp: Time.now.to_i + 600 # 10 minutes expiry
+    }
+    # Using jwt_secret helper from ApplicationController (or ENV directly if helper unavailable in this scope, but it should be)
+    # ApplicationController defines `jwt_secret`.
+    state_token = JWT.encode(state_payload, jwt_secret, 'HS256')
+    
+    authorizer.state = state_token
 
     redirect authorizer.authorization_uri.to_s
   end
 
   # Google redirects the user here after they approve the login.
   get '/google/callback' do
-    # First, check the state to ensure the request is legitimate.
-    if params['state'] != session[:state]
+    # Validate the state parameter (Stateless)
+    begin
+      JWT.decode(params['state'], jwt_secret, true, { algorithm: 'HS256' })
+      # If decode works, the signature is valid and it hasn't expired.
+    rescue JWT::DecodeError, JWT::ExpiredSignature
       halt 401, 'Invalid state parameter'
     end
 
