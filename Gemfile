@@ -20,4 +20,5 @@ group :development, :test do
   gem 'sqlite3', '1.6.9'
   gem 'rspec'
   gem 'rack-test'
+  gem 'factory_bot'
 end

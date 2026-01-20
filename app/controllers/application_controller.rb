@@ -20,9 +20,13 @@ class ApplicationController < Sinatra::Base
     set :logger, logger
     use Rack::CommonLogger, logger
     
-    # In-memory cache for job check throttling (reduces DB queries)
     set :job_check_cache, {}
     set :job_check_cache_ttl, 10 
+    
+    # In-memory rate limiting cache for search: { user_id => last_search_timestamp }
+    set :search_rate_limit_cache, {} 
+
+
   end
   
   helpers do
@@ -37,6 +41,21 @@ class ApplicationController < Sinatra::Base
       else
         false
       end
+    end
+
+    def check_search_rate_limit!(user_id)
+      cache = settings.search_rate_limit_cache
+      last_search = cache[user_id]
+      
+      # Limit: 1 request per 0.5 seconds
+      if last_search && (Time.now - last_check_timestamp(last_search)) < 0.5
+        halt 429, json({ error: 'Too many requests. Please slow down.' })
+      end
+      cache[user_id] = Time.now
+    end
+    
+    def last_check_timestamp(time_val)
+      time_val
     end
 
     def jwt_secret
@@ -203,8 +222,8 @@ class ApplicationController < Sinatra::Base
     end
 
     @request_payload = {}
-    body = request.body.read
-    if !body.empty? && request.content_type&.include?("application/json")
+    body = request.body&.read
+    if body && !body.empty? && request.content_type&.include?("application/json")
       begin
         @request_payload = JSON.parse(body)
       rescue JSON::ParserError

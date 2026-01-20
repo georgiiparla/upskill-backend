@@ -37,8 +37,15 @@ module RSpecMixin
   end
 end
 
+require 'factory_bot'
+
 RSpec.configure do |config|
   config.include RSpecMixin
+  config.include FactoryBot::Syntax::Methods
+
+  config.before(:suite) do
+    FactoryBot.find_definitions
+  end
   
   config.before(:each) do
     # Clear database before each test
