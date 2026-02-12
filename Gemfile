@@ -15,10 +15,7 @@ gem 'pg'
 gem 'jwt'
 gem 'google-api-client', '~> 0.53'
 
-group :development, :test do
+group :development do
   gem 'dotenv'
   gem 'sqlite3', '1.6.9'
-  gem 'rspec'
-  gem 'rack-test'
-  gem 'factory_bot'
 end
