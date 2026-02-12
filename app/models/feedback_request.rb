@@ -5,8 +5,9 @@ class FeedbackRequest < ActiveRecord::Base
 
   has_many :activity_streams, as: :target, dependent: :destroy
 
-  validates :topic, presence: true
-  validates :tag, presence: true, uniqueness: true
+  validates :topic, presence: true, length: { maximum: 200 }
+  validates :details, length: { maximum: 5000 }, allow_blank: true
+  validates :tag, presence: true, uniqueness: true, length: { maximum: 60 }
 
   validates :visibility, inclusion: { in: %w(public requester_only), message: "%{value} is not a valid visibility setting" }
 

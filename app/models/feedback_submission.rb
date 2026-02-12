@@ -8,7 +8,7 @@ class FeedbackSubmission < ActiveRecord::Base
   # Alias for cleaner controller code
   has_many :likes, class_name: 'FeedbackSubmissionLike', dependent: :destroy
 
-  validates :content, presence: true, length: { minimum: 10 }
+  validates :content, presence: true, length: { minimum: 10, maximum: 5000 }
   
   # SECURITY FIX: Input Validation
   # Ensure sentiment is within valid range to prevent integer overflow or analytics errors
