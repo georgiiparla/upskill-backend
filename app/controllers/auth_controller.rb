@@ -102,9 +102,10 @@ class AuthController < ApplicationController
       value: token,
       path: '/',
       expires: Time.now + (24 * 60 * 60), # 1 day
-      httponly: true,
-      secure: ENV['RACK_ENV'] == 'production',
-      same_site: :lax
+      domain: '.demoplatform.app',
+      secure: true,
+      same_site: :none,
+      httponly: true
     })
 
     redirect "#{ENV['FRONTEND_URL']}/dashboard"
