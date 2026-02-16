@@ -69,9 +69,15 @@ class ApplicationController < Sinatra::Base
 
     def decoded_token
       auth_header = request.env['HTTP_AUTHORIZATION']
+      token = nil
 
       if auth_header
         token = auth_header.split(' ')[1]
+      else
+        token = request.cookies['token']
+      end
+
+      if token
         begin
           JWT.decode(token, jwt_secret, true, algorithm: 'HS256')
         rescue JWT::DecodeError

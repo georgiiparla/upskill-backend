@@ -91,16 +91,27 @@ class AuthController < ApplicationController
       end
     end
 
-    # Generate JWT for the found/created user and redirect
+    # Generate JWT for the found/created user
     token = encode_token({ user_id: user.id })
     
     # Award daily login quest (5 points per login, once per 24 hours)
     QuestMiddleware.trigger(user, 'AuthController#google_callback')
     
-    redirect "#{ENV['FRONTEND_URL']}/auth/callback?token=#{token}"
+    # Set the secure, HttpOnly cookie directly from the backend
+    response.set_cookie('token', {
+      value: token,
+      path: '/',
+      expires: Time.now + (24 * 60 * 60), # 1 day
+      httponly: true,
+      secure: ENV['RACK_ENV'] == 'production',
+      same_site: :lax
+    })
+
+    redirect "#{ENV['FRONTEND_URL']}/dashboard"
   end
 
   post '/logout' do
+    response.delete_cookie('token', path: '/')
     json({ message: 'Logout acknowledged' })
   end
 
