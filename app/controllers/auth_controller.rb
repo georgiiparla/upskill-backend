@@ -39,7 +39,7 @@ class AuthController < ApplicationController
       JWT.decode(params['state'], jwt_secret, true, { algorithm: 'HS256' })
       # If decode works, the signature is valid and it hasn't expired.
     rescue JWT::DecodeError, JWT::ExpiredSignature
-      halt 401, 'Invalid state parameter'
+      json_error('Invalid state parameter', 401)
     end
 
     client_secrets = Google::APIClient::ClientSecrets.new(

@@ -8,22 +8,22 @@ class AgendaItemsController < ApplicationController
     protected!
     
     agenda_item = AgendaItem.find_by(id: params['id'])
-    halt 404, json({ error: "Agenda item not found." }) unless agenda_item
-    halt 422, json({ error: "System mantras cannot be edited." }) if agenda_item.is_system_mantra
+    json_error("Agenda item not found.", 404) unless agenda_item
+    json_error("System mantras cannot be edited.", 422) if agenda_item.is_system_mantra
 
     update_params = { editor: current_user } # Always set the current user as the editor
 
     if @request_payload.key?('title')
       new_title = @request_payload['title']
       max_length = 94
-      halt 422, json({ errors: ["Title cannot be empty."] }) if new_title.strip.empty?
-      halt 422, json({ errors: ["Title is too long (maximum #{max_length} characters)."] }) if new_title.length > max_length
+      json_error(["Title cannot be empty."], 422) if new_title.strip.empty?
+      json_error(["Title is too long (maximum #{max_length} characters)."], 422) if new_title.length > max_length
       update_params[:title] = new_title
     end
     
     if @request_payload.key?('icon_name')
       new_icon = @request_payload['icon_name']
-      halt 422, json({ errors: ["Invalid icon specified."] }) unless VALID_ICONS.include?(new_icon)
+      json_error(["Invalid icon specified."], 422) unless VALID_ICONS.include?(new_icon)
       update_params[:icon_name] = new_icon
     end
 
@@ -32,7 +32,7 @@ class AgendaItemsController < ApplicationController
       
       # FIX: Allow empty links (to clear them), but strictly validate non-empty links
       if new_link.present? && !new_link.match?(/\Ahttps?:\/\//i)
-        halt 422, json({ errors: ["Link must start with http:// or https://"] })
+        json_error(["Link must start with http:// or https://"], 422)
       end
 
       update_params[:link] = new_link
@@ -47,8 +47,7 @@ class AgendaItemsController < ApplicationController
         is_system_mantra: agenda_item.is_system_mantra
       )
     else
-      status 422
-      json({ errors: agenda_item.errors.full_messages })
+      json_error(agenda_item.errors.full_messages, 422)
     end
   end
 end

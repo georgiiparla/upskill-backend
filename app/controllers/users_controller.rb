@@ -5,8 +5,7 @@ class UsersController < ApplicationController
     
     query = params['q']&.strip
     if query.nil? || query.length < 2
-        status 400
-        return json({ error: 'Query too short' }) 
+        json_error('Query too short', 400)
     end
 
     # Stateless rate limiting using in-memory cache

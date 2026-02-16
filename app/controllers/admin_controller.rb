@@ -22,24 +22,20 @@ class AdminController < ApplicationController
     allowed_jobs = ['feedback_expiration_job', 'leaderboard_reset_job', 'leaderboard_sync_job', 'quest_reset_job']
     
     unless allowed_jobs.include?(job_name)
-      halt 400, json({ error: "Invalid job name. Allowed: #{allowed_jobs.join(', ')}" })
+      json_error("Invalid job name. Allowed: #{allowed_jobs.join(', ')}")
     end
     
-    begin
-      # Clear the cache to force execution
-      settings.job_check_cache.delete(job_name)
-      
-      # Dynamically call the job method
-      method_name = "run_#{job_name}"
-      
-      if respond_to?(method_name, true)
-        send(method_name, force: true)
-        json({ message: "Job '#{job_name}' triggered successfully." })
-      else
-        halt 500, json({ error: "Job method '#{method_name}' not found." })
-      end
-    rescue => e
-      halt 500, json({ error: "Job execution failed: #{e.message}" })
+    # Clear the cache to force execution
+    settings.job_check_cache.delete(job_name)
+    
+    # Dynamically call the job method
+    method_name = "run_#{job_name}"
+    
+    if respond_to?(method_name, true)
+      send(method_name, force: true)
+      json({ message: "Job '#{job_name}' triggered successfully." })
+    else
+      json_error("Job method '#{method_name}' not found.", 500)
     end
   end
 

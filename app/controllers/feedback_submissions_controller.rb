@@ -23,10 +23,10 @@ class FeedbackSubmissionsController < ApplicationController
     protected!
     
     request_tag = @request_payload['request_tag']
-    halt 400, json({ error: "request_tag is required." }) unless request_tag
+    json_error("request_tag is required.", 400) unless request_tag
 
     feedback_request = FeedbackRequest.find_by(tag: request_tag)
-    halt 404, json({ error: "Feedback request with tag '#{request_tag}' not found." }) unless feedback_request
+    json_error("Feedback request with tag '#{request_tag}' not found.", 404) unless feedback_request
 
     submission = current_user.feedback_submissions.build(
       feedback_request: feedback_request,
@@ -40,18 +40,17 @@ class FeedbackSubmissionsController < ApplicationController
       status 201
       json submission.as_json.merge(authorName: current_user.username)
     else
-      status 422
-      json({ errors: submission.errors.full_messages })
+      json_error(submission.errors.full_messages, 422)
     end
   end
 
   delete '/:id' do
     protected!
     submission = FeedbackSubmission.find_by(id: params['id'])
-    halt 404, json({ error: 'Submission not found.' }) unless submission
+    json_error('Submission not found.', 404) unless submission
 
     if submission.user_id != current_user.id
-      halt 403, json({ error: 'You are not authorized to delete this submission.' })
+      json_error('You are not authorized to delete this submission.', 403)
     end
 
     if submission.destroy
@@ -67,19 +66,18 @@ class FeedbackSubmissionsController < ApplicationController
 
       json({ message: 'Submission deleted successfully.' })
     else
-      status 500
-      json({ error: 'Failed to delete submission.' })
+      json_error('Failed to delete submission.', 500)
     end
   end
 
   post '/:id/like' do
     protected!
     submission = FeedbackSubmission.find_by(id: params[:id])
-    halt 404, json({ error: 'Submission not found' }) unless submission
+    json_error('Submission not found', 404) unless submission
 
     # 1. Prevent Self-Likes
     if submission.user_id == current_user.id
-       halt 422, json({ error: 'You cannot like your own feedback.' })
+       json_error('You cannot like your own feedback.', 422)
     end
 
     # 2. Rate Limit Check (Standard validation)
@@ -87,7 +85,7 @@ class FeedbackSubmissionsController < ApplicationController
                                               .where('created_at >= ?', Time.now.beginning_of_day)
                                               .count
     if daily_likes_count >= AppConfig::MAX_DAILY_LIKES
-      halt 422, json({ error: "Daily limit reached." })
+      json_error("Daily limit reached.", 422)
     end
 
     # 3. Idempotent Creation
@@ -102,7 +100,7 @@ class FeedbackSubmissionsController < ApplicationController
       end
       json({ success: true, likes: submission.likes.count })
     else
-      halt 500, json({ error: 'Failed to like submission' })
+      json_error('Failed to like submission', 500)
     end
   end
 
@@ -110,7 +108,7 @@ class FeedbackSubmissionsController < ApplicationController
   delete '/:id/like' do
     protected!
     submission = FeedbackSubmission.find_by(id: params[:id])
-    halt 404, json({ error: 'Submission not found' }) unless submission
+    json_error('Submission not found', 404) unless submission
 
     current_count = submission.likes.count
 

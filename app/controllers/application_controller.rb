@@ -231,4 +231,37 @@ class ApplicationController < Sinatra::Base
       end
     end
   end
+
+  # --- Centralized Error Handling ---
+
+  error do
+    e = env['sinatra.error']
+    settings.logger.error "Unhandled Exception: #{e.class} - #{e.message}\n#{e.backtrace.join("\n")}"
+    
+    status 500
+    response = { error: 'Internal Server Error' }
+    
+    # Only expose detailed messages if specifically enabled or in development
+    if ENV['RACK_ENV'] == 'development'
+      response[:message] = e.message
+      response[:type] = e.class.name
+    end
+    
+    json(response)
+  end
+
+  not_found do
+    status 404
+    json({ error: 'Not Found', message: "The requested resource '#{request.path}' was not found." })
+  end
+
+  helpers do
+    def json_error(error_or_errors, code = 400)
+      if error_or_errors.is_a?(Array)
+        halt code, json({ errors: error_or_errors })
+      else
+        halt code, json({ error: error_or_errors })
+      end
+    end
+  end
 end

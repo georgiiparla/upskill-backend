@@ -52,7 +52,7 @@ class FeedbackRequestsController < ApplicationController
                               .count
 
     if today_count >= daily_limit
-      halt 429, json({ error: "Daily limit reached. You can create up to #{daily_limit} requests per day." })
+      json_error("Daily limit reached. You can create up to #{daily_limit} requests per day.", 429)
     end
 
     request_params = @request_payload.slice('topic', 'details', 'tag', 'visibility')
@@ -62,9 +62,9 @@ class FeedbackRequestsController < ApplicationController
     if pair_username.present?
       pair_user = User.find_by(username: pair_username)
       if !pair_user
-        halt 404, json({ error: "Pair user not found" })
+        json_error("Pair user not found", 404)
       elsif pair_user.id == current_user.id
-        halt 422, json({ error: "Cannot pair with yourself" })
+        json_error("Cannot pair with yourself", 422)
       end
     end
 
@@ -88,8 +88,7 @@ class FeedbackRequestsController < ApplicationController
         isOwner: true # Creator is always an owner
       )
     else
-      status 422
-      json({ errors: feedback_request.errors.full_messages })
+      json_error(feedback_request.errors.full_messages, 422)
     end
   end
 
@@ -140,8 +139,7 @@ class FeedbackRequestsController < ApplicationController
              submissions: submissions_json
            })
     else
-      status 404
-      json({ error: "Request not found for tag '#{params['tag']}'" })
+      json_error("Request not found for tag '#{params['tag']}'", 404)
     end
   end
 
@@ -149,10 +147,10 @@ class FeedbackRequestsController < ApplicationController
     protected!
 
     feedback_request = FeedbackRequest.find_by(id: params['id'])
-    halt 404, json({ error: 'Feedback request not found.' }) unless feedback_request
+    json_error('Feedback request not found.', 404) unless feedback_request
 
     if feedback_request.requester_id != current_user.id && feedback_request.pair_id != current_user.id
-      halt 403, json({ error: 'You are not authorized to modify this request.' })
+      json_error('You are not authorized to modify this request.', 403)
     end
 
     new_status = @request_payload['status']
@@ -163,8 +161,7 @@ class FeedbackRequestsController < ApplicationController
         isOwner: true
       )
     else
-      status 422
-      json({ errors: feedback_request.errors.full_messages.presence || 'Invalid status provided.' })
+      json_error(feedback_request.errors.full_messages.presence || 'Invalid status provided.', 422)
     end
   end
 
@@ -172,10 +169,10 @@ class FeedbackRequestsController < ApplicationController
     protected!
 
     feedback_request = FeedbackRequest.find_by(id: params['id'])
-    halt 404, json({ error: 'Feedback request not found.' }) unless feedback_request
+    json_error('Feedback request not found.', 404) unless feedback_request
 
     if feedback_request.requester_id != current_user.id && feedback_request.pair_id != current_user.id
-      halt 403, json({ error: "You are not authorized to change this request's visibility." })
+      json_error("You are not authorized to change this request's visibility.", 403)
     end
 
     new_visibility = @request_payload['visibility']
@@ -187,8 +184,7 @@ class FeedbackRequestsController < ApplicationController
         isOwner: true
       )
     else
-      status 422
-      json({ errors: feedback_request.errors.full_messages })
+      json_error(feedback_request.errors.full_messages, 422)
     end
   end
 
@@ -197,10 +193,10 @@ class FeedbackRequestsController < ApplicationController
 
     feedback_request = FeedbackRequest.find_by(id: params['id'])
 
-    halt 404, json({ error: 'Feedback request not found.' }) unless feedback_request
+    json_error('Feedback request not found.', 404) unless feedback_request
 
     if feedback_request.requester_id != current_user.id && feedback_request.pair_id != current_user.id
-      halt 403, json({ error: 'You are not authorized to delete this request.' })
+      json_error('You are not authorized to delete this request.', 403)
     end
 
     if feedback_request.destroy
@@ -217,8 +213,7 @@ class FeedbackRequestsController < ApplicationController
       status 200
       json({ message: 'Feedback request deleted successfully.' })
     else
-      status 500
-      json({ error: 'Failed to delete the feedback request.' })
+      json_error('Failed to delete the feedback request.', 500)
     end
   end
 end
