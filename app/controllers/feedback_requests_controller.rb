@@ -6,32 +6,55 @@ class FeedbackRequestsController < ApplicationController
   # Returns requests where current_user is requester OR pair
   get '/' do
     protected!
+    
+    page = params.fetch('page', 1).to_i
+    limit = params.fetch('limit', 25).to_i
+    tab = params['tab'] || 'active'
 
-    # Efficient query using OR condition
-    # Include:
-    # 1. Requests where I am the requester
-    # 2. Requests where I am the pair
-    # 3. Requests that are PUBLIC (regardless of owner)
+    # Base Relation: Including associations to avoid N+1 queries later
     all_requests = FeedbackRequest.includes(:requester, :pair)
-                                  .where('requester_id = :current_user_id OR pair_id = :current_user_id OR visibility = :public_visibility', 
-                                         current_user_id: current_user.id, 
-                                         public_visibility: 'public')
-                                  .order(created_at: :desc)
+
+    # Filter based on "tab"
+    if tab == 'requests'
+      # "My Requests": Only where I am requester or pair
+      all_requests = all_requests.where(
+        'requester_id = :uid OR pair_id = :uid', uid: current_user.id
+      )
+    else
+      # "Active" or "Closed": Show mine OR public
+      all_requests = all_requests.where(
+        'requester_id = :uid OR pair_id = :uid OR visibility = :pub',
+        uid: current_user.id, pub: 'public'
+      )
+      
+      if tab == 'closed'
+        all_requests = all_requests.where(status: 'closed')
+      else
+        # Default to 'active'
+        all_requests = all_requests.where("status != 'closed' OR status IS NULL")
+      end
+    end
+
+    all_requests = all_requests.order(created_at: :desc)
 
     if params['search'] && !params['search'].empty?
       search_term = "%#{params['search'].downcase}%"
       # Search in topic, tag, OR requester username, OR pair username
-      # Need joins to filter by username
       all_requests = all_requests.left_joins(:requester, :pair).where(
-        'lower(feedback_requests.topic) LIKE ? OR ' +
-        'lower(feedback_requests.tag) LIKE ? OR ' +
-        'lower(users.username) LIKE ? OR ' + 
+        'lower(feedback_requests.topic) LIKE ? OR ' \
+        'lower(feedback_requests.tag) LIKE ? OR ' \
+        'lower(users.username) LIKE ? OR ' \
         'lower(pairs_feedback_requests.username) LIKE ?',
         search_term, search_term, search_term, search_term
-      )
+      ).distinct
     end
 
-    requests_json = all_requests.map do |request|
+    # Pagination logic
+    total_count = all_requests.count
+    paginated_requests = all_requests.limit(limit).offset((page - 1) * limit)
+    has_more = total_count > (page * limit)
+
+    requests_json = paginated_requests.map do |request|
       request.as_json.merge(
         requester_username: request.requester.username,
         pair_username: request.pair&.username,
@@ -39,7 +62,7 @@ class FeedbackRequestsController < ApplicationController
       )
     end
 
-    json({ items: requests_json, hasMore: false })
+    json({ items: requests_json, hasMore: has_more, totalCount: total_count })
   end
 
   post '/' do

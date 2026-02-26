@@ -6,8 +6,18 @@ class FeedbackSubmissionsController < ApplicationController
     page = params.fetch('page', 1).to_i
     limit = params.fetch('limit', 25).to_i
 
-    submissions = current_user.feedback_submissions.includes(:feedback_request).order(created_at: :desc).limit(limit).offset((page - 1) * limit)
-    total_count = current_user.feedback_submissions.count
+    submissions_query = current_user.feedback_submissions.includes(:feedback_request).order(created_at: :desc)
+
+    if params['search'] && !params['search'].empty?
+      search_term = "%#{params['search'].downcase}%"
+      submissions_query = submissions_query.where(
+        'lower(subject) LIKE ? OR lower(content) LIKE ?', 
+        search_term, search_term
+      )
+    end
+
+    total_count = submissions_query.count
+    submissions = submissions_query.limit(limit).offset((page - 1) * limit)
     has_more = total_count > (page * limit)
 
     submissions_json = submissions.map do |submission|
@@ -16,7 +26,7 @@ class FeedbackSubmissionsController < ApplicationController
       )
     end
 
-    json({ items: submissions_json, hasMore: has_more })
+    json({ items: submissions_json, hasMore: has_more, totalCount: total_count })
   end
 
   post '/' do
