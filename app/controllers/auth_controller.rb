@@ -83,25 +83,32 @@ class AuthController < ApplicationController
     
     QuestMiddleware.trigger(user, 'AuthController#google_callback')
     
-    # Set the secure, HttpOnly cookie directly from the backend
-    response.set_cookie('token', {
+    cookie_options = {
       value: token,
       path: '/',
       expires: Time.now + (24 * 60 * 60),
-      domain: '.demoplatform.app',
-      secure: true,
-      same_site: :none,
       httponly: true
-    })
+    }
+
+    if ENV['RACK_ENV'] == 'production'
+      cookie_options[:domain] = ENV['COOKIE_DOMAIN'] || '.demoplatform.app'
+      cookie_options[:secure] = true
+      cookie_options[:same_site] = :none
+    end
+
+    # Set the secure, HttpOnly cookie directly from the backend
+    response.set_cookie('token', cookie_options)
 
     redirect "#{ENV['FRONTEND_URL']}/dashboard"
   end
 
   post '/logout' do
-    response.delete_cookie('token', {
-      path: '/',
-      domain: '.demoplatform.app'
-    })
+    logout_options = { path: '/' }
+    if ENV['RACK_ENV'] == 'production'
+      logout_options[:domain] = ENV['COOKIE_DOMAIN'] || '.demoplatform.app'
+    end
+
+    response.delete_cookie('token', logout_options)
 
     # Extra safety
     response.delete_cookie('token', { path: '/' })

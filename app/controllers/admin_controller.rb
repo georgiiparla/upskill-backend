@@ -39,6 +39,43 @@ class AdminController < ApplicationController
     end
   end
 
+  get '/jobs' do
+    admin_protected!
+    
+    # Leaderboard Reset Job Next Run
+    reset_rec = SystemSetting.find_by(key: 'last_leaderboard_reset_run')
+    last_reset = reset_rec ? (Time.parse(reset_rec.value) rescue nil) : nil
+    next_reset = last_reset ? (last_reset + AppConfig::LEADERBOARD_RESET_FREQUENCY.seconds).iso8601 : nil
+
+    # Sync Job Next Run
+    sync_rec = SystemSetting.find_by(key: 'last_leaderboard_sync')
+    last_sync = sync_rec ? (Time.parse(sync_rec.value) rescue nil) : nil
+    next_sync = last_sync ? (last_sync + AppConfig::LEADERBOARD_SYNC_INTERVAL.seconds).iso8601 : nil
+
+    jobs = [
+      { 
+        id: 'leaderboard_reset_job', 
+        label: 'Reset Leaderboard', 
+        description: 'Resets points for the new cycle',
+        next_run_date: next_reset
+      },
+      { 
+        id: 'leaderboard_sync_job', 
+        label: 'Sync Leaderboard', 
+        description: 'Syncs public points with shadow points',
+        next_run_date: next_sync
+      },
+      { 
+        id: 'quest_reset_job', 
+        label: 'Reset Quests', 
+        description: 'Resets progress for interval-based quests',
+        next_run_date: nil # Complex to calculate globally, omitting
+      }
+    ]
+
+    json jobs
+  end
+
   get '/env' do
     admin_protected!
     

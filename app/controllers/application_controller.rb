@@ -157,6 +157,7 @@ class ApplicationController < Sinatra::Base
     def run_leaderboard_reset_job(force: false)
       return unless force || should_check_job?('leaderboard_reset_job')
       key = 'last_leaderboard_reset_run'
+      season_key = 'current_leaderboard_season'
 
       SystemSetting.transaction do
         rec = find_or_create_system_setting_safely(key)
@@ -166,8 +167,35 @@ class ApplicationController < Sinatra::Base
 
         begin
           settings.logger.info "Running monthly leaderboard reset job..."
+          
+          season_rec = find_or_create_system_setting_safely(season_key)
+          current_season = season_rec.value.to_i
+          current_season = 1 if current_season <= 0
+
+          # A year string (e.g. 2025) was used in earlier implementation, which breaks chronological counter sequence.
+          # Reset it securely to 1 if it looks like a year for continuity.
+          current_season = 1 if current_season >= 2000
+
+          settings.logger.info "Saving current leaderboard state to Season #{current_season}..."
+          
+          end_date = Time.now
+          start_date = last
+          
+          Leaderboard.find_each do |lb|
+            LeaderboardSeason.create!(
+              season_number: current_season,
+              user_id: lb.user_id,
+              points: lb.points,
+              public_points: lb.public_points,
+              start_date: start_date,
+              end_date: end_date
+            )
+          end
+          
+          season_rec.update!(value: (current_season + 1).to_s)
+
           reset_count = Leaderboard.update_all(points: 0, public_points: 0)
-          settings.logger.info "Reset points for #{reset_count} user(s) in leaderboard."
+          settings.logger.info "Saved season #{current_season} and reset points for #{reset_count} user(s)."
           rec.update!(value: Time.now.utc.iso8601)
         rescue => e
           settings.logger.error "Leaderboard reset job failed: #{e.message}"

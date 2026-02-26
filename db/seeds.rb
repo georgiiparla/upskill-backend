@@ -68,12 +68,12 @@ ActiveRecord::Base.transaction do
 
   puts "   - Creating mock leaderboard..."
   Leaderboard.create!([
-    { user: users[:alex],   points: 0, badges: nil },
-    { user: users[:casey],  points: 0, badges: nil },
-    { user: users[:taylor], points: 0, badges: nil },
-    { user: users[:jordan], points: 0, badges: nil },
-    { user: users[:jamie],  points: 0, badges: nil },
-    { user: users[:morgan], points: 0, badges: nil }
+    { user: users[:alex],   points: 0 },
+    { user: users[:casey],  points: 0 },
+    { user: users[:taylor], points: 0 },
+    { user: users[:jordan], points: 0 },
+    { user: users[:jamie],  points: 0 },
+    { user: users[:morgan], points: 0 }
   ])
 
 

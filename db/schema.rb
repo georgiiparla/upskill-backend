@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_20_114000) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_26_151500) do
   create_table "activity_streams", force: :cascade do |t|
     t.integer "actor_id"
     t.datetime "created_at", null: false
@@ -77,10 +77,23 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_20_114000) do
     t.index ["user_id"], name: "index_feedback_submissions_on_user_id"
   end
 
+  create_table "leaderboard_seasons", force: :cascade do |t|
+    t.integer "season_number", null: false
+    t.integer "user_id", null: false
+    t.integer "points", default: 0, null: false
+    t.integer "public_points", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "start_date"
+    t.datetime "end_date"
+    t.index ["season_number", "user_id"], name: "index_leaderboard_seasons_on_season_number_and_user_id", unique: true
+    t.index ["season_number"], name: "index_leaderboard_seasons_on_season_number"
+    t.index ["user_id"], name: "index_leaderboard_seasons_on_user_id"
+  end
+
   create_table "leaderboards", force: :cascade do |t|
     t.integer "user_id"
     t.integer "points"
-    t.text "badges"
     t.integer "public_points", default: 0, null: false
     t.datetime "created_at", default: "2025-12-01 12:45:17", null: false
     t.datetime "updated_at", default: "2025-12-01 12:45:17", null: false
@@ -166,6 +179,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_20_114000) do
   add_foreign_key "feedback_submission_likes", "users"
   add_foreign_key "feedback_submissions", "feedback_requests"
   add_foreign_key "feedback_submissions", "users"
+  add_foreign_key "leaderboard_seasons", "users"
   add_foreign_key "leaderboards", "users"
   add_foreign_key "quest_resets", "quests"
   add_foreign_key "user_email_aliases", "users"
